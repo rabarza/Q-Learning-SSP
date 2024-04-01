@@ -8,11 +8,6 @@ import os
 from city.app_graph import CityGraph, QUERIE_PARAMS
 from RLib.utils.file_utils import load_model_results, find_files_by_keyword
 from RLib.utils.plot_utils import plot_results_per_episode_comp_plotly
-import pandas as pd
-import osmnx as ox
-import networkx as nx
-import pydeck as pdk
-from geopandas import GeoDataFrame
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")

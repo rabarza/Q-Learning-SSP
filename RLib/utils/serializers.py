@@ -1,5 +1,6 @@
 import json
 import networkx as nx
+from .table_utils import resta_diccionarios
 
 
 def serialize_table(table):
@@ -18,6 +19,8 @@ def serialize_table(table):
             serialized_value = [v for v in value]
         elif isinstance(value, int) or isinstance(value, float):
             serialized_value = value
+        elif isinstance(value, tuple):
+            serialized_value = str(value)
         elif value is None:
             serialized_value = None
         else:
@@ -60,7 +63,8 @@ class QAgentSSPSerializer:
             "times_states": serialize_table(self.q_agent.times_states),
             "q_table": serialize_table(self.q_agent.q_table),
             "optimal_q_table": serialize_table(getattr(self.q_agent, "q_star", {})),
-            "optimal_policy": getattr(self.q_agent, "optimal_policy", None),
+            "error_q_table": serialize_table(resta_diccionarios(self.q_agent.q_star, self.q_agent.q_table)),
+            "optimal_policy": serialize_table(getattr(self.q_agent, "optimal_policy", None)),
         }
 
 

@@ -1,7 +1,5 @@
 import os
-import pickle
 import random
-import time
 import streamlit as st
 import networkx as nx
 
@@ -28,13 +26,8 @@ from RLib.utils.file_utils import save_model_results
 from RLib.utils.file_utils import load_model_results, find_files_by_keyword
 from RLib.utils.plot_utils import plot_results_per_episode_comp_plotly
 
-
-from RLib.action_selection.action_selector import (
-    EpsilonGreedyActionSelector,
-    DynamicEpsilonGreedyActionSelector,
-    UCB1ActionSelector,
-    Exp3ActionSelector,
-)
+# Importar serializadores
+from RLib.utils.serializers import QAgentSSPSerializer
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -56,7 +49,7 @@ def get_selected_agents(
                 value=(0.08, 0.1),
                 step=0.01,
             )
-            apply_button = st.form_submit_button(label="Aplicar")
+            apply_button = st.form_submit_button("Aplicar")
 
         st.write(f"Valor mínimo de alpha: {min_alpha}")
         st.write(f"Valor máximo de alpha: {max_alpha}")
@@ -177,11 +170,21 @@ class ResultsVisualizer:
             for criteria in ["error", "policy error", "steps", "score"]:
                 fig = plot_results_per_episode_comp_plotly(selected_agents, criteria)
                 st.write(fig)
-                
-        from RLib.utils.serializers import QAgentSSPSerializer
-        serialized_agent = QAgentSSPSerializer(selected_agents[0]).to_dict()
+            # Crear un diccionario para asociar el ID único con la representación de cadena
+            agent_options = {str(agent.id): str(agent) for agent in selected_agents}
+            # Selección de agente
+            selected_agent_id = st.selectbox(
+                "Selecciona un agente",
+                list(agent_options.keys()),    # Usar el ID único como valor de la opción
+                format_func=lambda x: agent_options[x],  # Mostrar la representación de cadena en la interfaz
+                key="selected_agent",
+            )
+        # get the selected agent as agent object
+        selected_agent = next(agent for agent in selected_agents if str(agent.id) == selected_agent_id)
+
+        # Serializar el agente seleccionado
+        serialized_agent = QAgentSSPSerializer(selected_agent).to_dict()
         st.write(serialized_agent)
-        
 
 
 class PerceptronApp:
@@ -199,7 +202,7 @@ class PerceptronApp:
         """Crea un grafo de NetworkX con las capas y nodos del perceptrón.
         Las conexiones entre nodos son aleatorias y se asigna una longitud a cada conexión en forma aleatoria.
         La longitud se genera con un número entero aleatorio entre 1 y 100.
-        
+
         Returns:
         --------------------------------
             grafo_perceptron (nx.DiGraph): Grafo de NetworkX con las capas y nodos del perceptrón.
@@ -242,7 +245,7 @@ class PerceptronApp:
 
     def refresh_graph_display(self):
         """Actualiza la interfaz de usuario con los nodos y conexiones del grafo."""
-        
+
         for i in range(self.numero_capas_ocultas):
             capa_actual = i + 1  # Comienza en 1
             self.capas.insert(-1, f"Oculta {capa_actual}")
@@ -309,7 +312,7 @@ class PerceptronApp:
 
         with st.spinner("Cargando..."):
             G = load_graph(file_name, base_dir=BASE_DIR, folder_name=GRAPHS_DIR_NAME)
-            
+
             fig = plot_perceptron_graph(G)
             st.write(fig)
             st.success("Cargado!", icon="✅")
@@ -318,9 +321,15 @@ class PerceptronApp:
             st.session_state.graph = G
 
     def train_agents_view(self):
-        variables = ["graph", "policies", "q_star", "q_star_serialized", "optimal_policy"]
+        variables = [
+            "graph",
+            "policies",
+            "q_star",
+            "q_star_serialized",
+            "optimal_policy",
+        ]
         initialize_session_state_variables(variables)
-        
+
         # Seleccionar un grafo guardado
         self.load_graph_helper()
         G = st.session_state.graph
@@ -404,6 +413,8 @@ class PerceptronApp:
                 policy=st.session_state.optimal_policy,
                 distribution="lognormal",
             )
+            # Asignar la política óptima al agente
+            agent.optimal_policy = st.session_state.optimal_policy
             # Crear carpetas para guardar resultados
             strategies_list = ["e-greedy", "UCB1", "exp3"]
 

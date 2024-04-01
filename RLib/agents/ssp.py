@@ -47,7 +47,6 @@ class QAgentSSP:
         self.gamma = gamma
         self.action_selector = action_selector
         self.strategy = action_selector.strategy
-
         # Se cuenta la cantidad de veces que se tomo una accion en cada estado N(s,a)
         self.times_actions = self.env.dict_states_actions_zeros()
 
@@ -64,9 +63,12 @@ class QAgentSSP:
             self.alpha_formula = "max(alpha, 1 / N(s,a))"
         else:
             self.alpha_formula = "alpha"
+            
+        self.id = id(self)
+
 
     def __str__(self):
-        return f"QAgentSSP(strategy={self.strategy}, epsilon={self.action_selector.epsilon}, alpha={self.alpha}, gamma={self.gamma})\n"
+        return f"QAgentSSP(strategy={self.action_selector} alpha={self.alpha} gamma={self.gamma} alpha_formula={self.alpha_formula})"
 
     def argmax_q_table(self, state):
         """
