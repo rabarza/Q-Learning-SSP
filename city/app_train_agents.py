@@ -152,6 +152,7 @@ def show():
                 agent = QAgentSSP(
                     env, alpha=alpha, gamma=gamma, action_selector=action_selector
                 )
+                
                 print(st.session_state.policies[orig_node])
                 
                 agent.train(
@@ -160,6 +161,10 @@ def show():
                     policy=st.session_state.policies[orig_node],
                     distribution="lognormal",
                 )
+                
+                # Asignar la política óptima al agente
+                agent.optimal_policy = optimal_policy
+                
             st.success("Entrenamiento completado!")
             
             with st.spinner("Guardando resultados..."):

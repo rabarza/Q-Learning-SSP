@@ -1,5 +1,4 @@
-import networkx as nx
-from RLib.distributions.distributions import expected_time, expected_speed
+from RLib.distributions.distributions import expected_time
 from RLib.environments.ssp import get_edge_length, get_edge_speed
 from RLib.utils.table_utils import dict_states_actions_zeros
 from stqdm import stqdm

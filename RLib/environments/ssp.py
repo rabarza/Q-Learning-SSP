@@ -384,3 +384,8 @@ class SSPEnv:
         '''### Calcular la tabla Q óptima
         '''
         pass
+    
+    
+if __name__ == "__main__":
+    # Tu código aquí
+    pass

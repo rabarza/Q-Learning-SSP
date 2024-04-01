@@ -177,6 +177,8 @@ class QAgentSSP:
         self.steps = np.zeros(num_episodes)
         self.scores = np.zeros(num_episodes)
         self.avg_scores = np.zeros(num_episodes)
+        
+        self.q_star = q_star
 
         # best
         self.steps_best = np.zeros(num_episodes)  # Cambios temporales
@@ -298,14 +300,3 @@ class QAgentSSP:
         plt.ylabel("Steps")
         plt.grid()
         plt.show()
-
-
-# # Make a class inheriting from QAgentSSP for Other type of networks
-# class NetworkQAgentSSP(QAgentSSP):
-#     def __init__(self, environment, alpha=0.01, gamma=1, dynamic_alpha=False, action_selector=EpsilonGreedyActionSelector(epsilon=0.1)):
-#         super().__init__(environment, alpha, gamma, dynamic_alpha, action_selector)
-#         # Additional initialization code specific to Other type of networks
-
-#     def additional_method(self):
-#         # Additional methods specific to Other type of networks
-#         pass

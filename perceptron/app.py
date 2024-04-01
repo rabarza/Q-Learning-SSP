@@ -177,6 +177,11 @@ class ResultsVisualizer:
             for criteria in ["error", "policy error", "steps", "score"]:
                 fig = plot_results_per_episode_comp_plotly(selected_agents, criteria)
                 st.write(fig)
+                
+        from RLib.utils.serializers import QAgentSSPSerializer
+        serialized_agent = QAgentSSPSerializer(selected_agents[0]).to_dict()
+        st.write(serialized_agent)
+        
 
 
 class PerceptronApp:
