@@ -1,0 +1,13 @@
+__pycache__/
+# Environment variable file
+env/
+# Results of the tests and cache
+results/
+cache/
+# Jupyter notebooks
+notebooks/
+# results of the tests
+results/
+# Build networks
+networks/
+# notebooks

@@ -1,0 +1,32 @@
+
+/* styles.css */
+/* html {
+    box-sizing: border-box;
+    font-size: 62.5%;
+}
+
+*, *:before, *:after {
+    box-sizing: inherit;
+} */
+
+
+
+:root{
+    --origin_node_color: rgba(255, 0, 0, 200);
+    --dest_node_color: rgba(0, 255, 0, 200);
+}
+
+.red-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--origin_node_color);
+    margin-right: 20px;
+}
+
+.green-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--dest_node_color);
+}
