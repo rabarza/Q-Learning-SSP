@@ -10,7 +10,7 @@ def dict_states_actions_zeros(G):
         return {state: {action : 0 for action in actions} for state, actions in nx.to_dict_of_lists(G).items()}
     
 # ======================= Norma máxima =======================
-def max_norm(q_table1, q_table2, policy=None):
+def max_norm(q_table1, q_table2, path=None):
     '''
     Calcula la norma máxima entre dos diccionarios. Es útil para medir el error en la norma infinita de Q := max|Q - Q*|.
     
@@ -20,22 +20,22 @@ def max_norm(q_table1, q_table2, policy=None):
         Tabla Q, debe ser un diccionario de la forma {estado: {accion: valor, ..., accion: valor}, ..., estado: {accion: valor, ..., accion: valor}}
     q_table2: dict
         Tabla Q* debe ser un diccionario de la forma {estado: {accion: valor, ..., accion: valor}, ..., estado: {accion: valor, ..., accion: valor}}
-    policy: dict
-        diccionario con la política a evaluar. Si es None, se evalúa la norma máxima de todos los estados y acciones. Es de la forma {estado: accion, ..., estado: accion}
+    path: list
+        Lista de nodos que conforman el camino. más corto entre el nodo de inicio y el nodo de destino. Por defecto es None, lo que significa que se calcula la norma máxima para todos los estados y acciones. Si se pasa un camino, se calcula la norma máxima para los estados y acciones del camino.
     '''
     assert q_table1.keys() == q_table2.keys(), "Las tablas Q deben tener los mismos estados"
     restas = []
-    if policy is None:
+    if path is None:
         # restar para cada estado y acción
         for state in q_table1.keys():
             for action in q_table1[state].keys():
                 resta = abs(q_table1[state][action] - q_table2[state][action])
                 restas.append(resta)
     else:
-        for key, value in policy.items():
-            estado = key
-            accion = value
-            resta = abs(q_table1[estado][accion] - q_table2[estado][accion])
+        for index in range(len(path) - 1):
+            node = path[index]
+            next_node = path[index + 1]
+            resta = abs(q_table1[node][next_node] - q_table2[node][next_node])
             restas.append(resta)
     return max(restas)
 

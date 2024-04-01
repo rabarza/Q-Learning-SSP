@@ -20,7 +20,11 @@ from train.actions import get_action_selector
 # TRAIN library
 from RLib.environments.ssp import SSPEnv
 from RLib.agents.ssp import QAgentSSP
-from RLib.utils.dijkstra_utils import get_optimal_policy, get_q_table_for_policy
+from RLib.utils.dijkstra_utils import (
+    get_optimal_policy,
+    get_shortest_path_from_policy,
+    get_q_table_for_policy,
+)
 
 from RLib.utils.file_utils import save_model_results
 from RLib.utils.file_utils import load_model_results, find_files_by_keyword
@@ -140,11 +144,37 @@ class ResultsVisualizer:
         )
         self.agents = self.agents_const + self.agents_dyna
 
+    def show_serialized_agents(self, selected_agents):
+        # Crear un diccionario para asociar el ID único con la representación de cadena
+        agent_options = {str(agent.id): str(agent) for agent in selected_agents}
+        # Selección de agente
+        selected_agent_id = st.selectbox(
+            "Selecciona un agente",
+            list(agent_options.keys()),  # Usar el ID único como valor de la opción
+            format_func=lambda x: agent_options[
+                x
+            ],  # Mostrar la representación de cadena en la interfaz
+            key="selected_agent",
+        )
+        # get the selected agent as agent object
+        selected_agent = next(
+            agent for agent in selected_agents if str(agent.id) == selected_agent_id
+        )
+
+        # Serializar el agente seleccionado
+        serialized_agent = QAgentSSPSerializer(selected_agent).to_dict()
+        st.write(serialized_agent)
+
     def show_results(self):
+        default_options = {
+            "strategies": ["e-greedy", "UCB1", "exp3"],
+            "alpha_type": ["Constante"],
+        }
+
         selected_strategies = st.sidebar.multiselect(
             "Selecciona Estrategias",
             ["e-greedy", "UCB1", "exp3"],
-            default=None,
+            default=default_options["strategies"],
             key="strategies",
         )
         selected_strategies.sort()
@@ -152,7 +182,7 @@ class ResultsVisualizer:
         selected_alpha_type = st.sidebar.multiselect(
             "Selecciona Tipo de Alpha",
             ["Constante", "Dinámica"],
-            default="Constante",
+            default=default_options["alpha_type"],
             key="alpha_type",
         )
 
@@ -166,25 +196,14 @@ class ResultsVisualizer:
                 self.agents_const,
                 self.agents_dyna,
             )
+            if not selected_agents:
+                return
 
             for criteria in ["error", "policy error", "steps", "score"]:
                 fig = plot_results_per_episode_comp_plotly(selected_agents, criteria)
                 st.write(fig)
-            # Crear un diccionario para asociar el ID único con la representación de cadena
-            agent_options = {str(agent.id): str(agent) for agent in selected_agents}
-            # Selección de agente
-            selected_agent_id = st.selectbox(
-                "Selecciona un agente",
-                list(agent_options.keys()),    # Usar el ID único como valor de la opción
-                format_func=lambda x: agent_options[x],  # Mostrar la representación de cadena en la interfaz
-                key="selected_agent",
-            )
-        # get the selected agent as agent object
-        selected_agent = next(agent for agent in selected_agents if str(agent.id) == selected_agent_id)
-
-        # Serializar el agente seleccionado
-        serialized_agent = QAgentSSPSerializer(selected_agent).to_dict()
-        st.write(serialized_agent)
+            # Mostrar los resultados del agente seleccionado
+            self.show_serialized_agents(selected_agents)
 
 
 class PerceptronApp:
@@ -229,7 +248,7 @@ class PerceptronApp:
                     grafo_perceptron.add_edge(
                         (self.capas[i], j),
                         (self.capas[i + 1], k),
-                        length=random.randint(1, 100),
+                        length=random.randint(100, 200),
                     )
 
         # Añadir conexion redundante en el último nodo (nodo terminal)
@@ -299,26 +318,33 @@ class PerceptronApp:
         variables = ["graph", "file_name"]
         initialize_session_state_variables(variables)
         # Obtener la lista de archivos .pkl en la carpeta 'networks'
-        files = get_pkl_files_in_folder(BASE_DIR, GRAPHS_DIR_NAME)
-        # Obtener la lista de nombres de archivos sin la extensión .pkl
-        file_names = list(map(lambda x: x.split(".")[0], files))
-        # Seleccionar un grafo guardado
-        file_name = st.selectbox(
-            "Selecciona un grafo existente",
-            file_names,
-            on_change=clear_session_state_variables,
-        )
-        file_name += ".pkl"  # Agregar la extensión .pkl
+        try:
+            files = get_pkl_files_in_folder(BASE_DIR, GRAPHS_DIR_NAME)
+            # Obtener la lista de nombres de archivos sin la extensión .pkl
+            file_names = list(map(lambda x: x.split(".")[0], files))
+            # Seleccionar un grafo guardado
+            file_name = st.selectbox(
+                "Selecciona un grafo existente",
+                file_names,
+                on_change=clear_session_state_variables,
+            )
+            file_name += ".pkl"  # Agregar la extensión .pkl
 
-        with st.spinner("Cargando..."):
-            G = load_graph(file_name, base_dir=BASE_DIR, folder_name=GRAPHS_DIR_NAME)
+            with st.spinner("Cargando..."):
+                G = load_graph(
+                    file_name, base_dir=BASE_DIR, folder_name=GRAPHS_DIR_NAME
+                )
 
-            fig = plot_perceptron_graph(G)
-            st.write(fig)
-            st.success("Cargado!", icon="✅")
-            # Almacenar el grafo en el estado de la sesión
-            st.session_state.graph_name = file_name
-            st.session_state.graph = G
+                fig = plot_perceptron_graph(G)
+                st.write(fig)
+                st.success("Cargado!", icon="✅")
+                # Almacenar el grafo en el estado de la sesión
+                st.session_state.graph_name = file_name
+                st.session_state.graph = G
+        except Exception as e:
+            st.error(
+                f"No hay grafos guardados en la carpeta {GRAPHS_DIR_NAME}. Crea un grafo nuevo para poder entrenar agentes."
+            )
 
     def train_agents_view(self):
         variables = [
@@ -327,6 +353,7 @@ class PerceptronApp:
             "q_star",
             "q_star_serialized",
             "optimal_policy",
+            "shortest_path",
         ]
         initialize_session_state_variables(variables)
 
@@ -341,6 +368,10 @@ class PerceptronApp:
 
         st.write("Nodo de origen:", orig_node)
         st.write("Nodo de destino:", dest_node)
+
+        default_options = {
+            "strategies": ["e-greedy", "UCB1", "exp3"],
+        }
 
         # Seleccionar Estrategias
         selected_strategy = st.sidebar.selectbox(
@@ -358,19 +389,21 @@ class PerceptronApp:
         if get_qstar_button:
             with st.spinner("Calculando políticas óptimas y tabla Q*..."):
                 # Obtener la política óptima para cada nodo en el grafo hasta el destino
-                policy = get_optimal_policy(G, dest_node)
-                optimal_policy = policy
+                optimal_policy = get_optimal_policy(G, dest_node)
                 print(f"\nPolítica óptima: {optimal_policy}\n")
                 # Obtener la tabla Q* completa a partir de las políticas óptimas
                 q_star = get_q_table_for_policy(G, optimal_policy, dest_node)
                 serialized_qtable = serialize_dict_of_dicts(q_star)
+                shortest_path = get_shortest_path_from_policy(
+                    optimal_policy, orig_node, dest_node
+                )
                 # Guardar los resultados en el estado de la sesión
                 # Este paso es necesario para que los resultados persistan en la sesión
                 # cada vez que se haga clic en el botón (o se renderice la aplicación nuevamente)
                 st.session_state.optimal_policy = optimal_policy
-                st.session_state.policies = policy
                 st.session_state.q_star = q_star
                 st.session_state.q_star_serialized = serialized_qtable
+                st.session_state.shortest_path = shortest_path
             st.success("Políticas óptimas y tabla Q* calculadas!")
 
         # Usar st.form para agrupar sliders y botón de entrenamiento
@@ -410,7 +443,7 @@ class PerceptronApp:
             agent.train(
                 num_episodes,
                 q_star=st.session_state.q_star,
-                policy=st.session_state.optimal_policy,
+                shortest_path=st.session_state.shortest_path,
                 distribution="lognormal",
             )
             # Asignar la política óptima al agente

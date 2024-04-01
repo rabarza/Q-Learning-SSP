@@ -58,11 +58,11 @@ def dijkstra_shortest_path(graph, source, target, avg_speed=25):
                 shortest_distances[neighbor] = distance
                 parents[neighbor] = current_node
 
-    shortest_path = get_shortest_path(parents, source, target)
+    shortest_path = get_shortest_path_from_parents(parents, source, target)
     return shortest_distances, parents, shortest_path
 
 
-def get_shortest_path(parents, source, target):
+def get_shortest_path_from_parents(parents, source, target):
     """Retorna el camino más corto desde el nodo de origen al nodo de destino.
     Parameters
     ----------
@@ -85,6 +85,34 @@ def get_shortest_path(parents, source, target):
         shortest_path.append(nodo_actual)
     shortest_path.reverse()
     return shortest_path
+
+
+def get_shortest_path_from_policy(policy, source, target):
+    '''Retorna el camino más corto desde el nodo de origen al nodo de destino a partir de la política óptima.
+    
+    Parameters
+    ----------
+    policy: dict
+        Diccionario que contiene la política óptima para el camino más corto entre el nodo de inicio y el nodo de destino.
+    source: int
+        nodo de origen
+    target: int
+        nodo de destino
+    
+    Returns
+    -------
+    path: list
+        lista con el camino más corto desde el nodo de origen al nodo de destino. Tiene la forma [nodo, ..., nodo]
+    '''
+    
+    path = [source]
+    node = source
+    while node != target:
+        # Siguiente nodo en el camino más corto
+        node = policy[node]
+        # Agregar el nodo al camino
+        path.append(node)
+    return path
 
 
 def get_path_as_stateactions_dict(path):
@@ -118,7 +146,7 @@ def get_optimal_policy(grafo, dest_node):
     Parameters
     ----------
     grafo: networkx.classes.multidigraph.MultiDiGraph
-        grafo de una ciudad  
+        grafo de una ciudad
     dest_node: int
         nodo de destino
 
@@ -133,12 +161,14 @@ def get_optimal_policy(grafo, dest_node):
     remaining_nodes = set(grafo.nodes())
     # Inicializar el diccionario de política
     policies = {}
-    
+
     while remaining_nodes:
         # Seleccionar un nodo no visitado
         source_node = next(node for node in remaining_nodes)
         # Realizar una búsqueda de Dijkstra desde el nodo seleccionado como source_node
-        distancias, padres, shortest_path = dijkstra_shortest_path(grafo, source_node, dest_node)
+        distancias, padres, shortest_path = dijkstra_shortest_path(
+            grafo, source_node, dest_node
+        )
         shortest_path_as_dict = get_path_as_stateactions_dict(shortest_path)
         # Agrega todas las llaves y valores del diccionario shortest_path_as_dict al diccionario policies
         policies.update(shortest_path_as_dict)

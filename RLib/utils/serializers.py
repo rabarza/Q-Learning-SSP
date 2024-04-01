@@ -4,12 +4,14 @@ from .table_utils import resta_diccionarios
 
 
 def serialize_table(table):
-    '''Serializa un diccionario de diccionarios, diccionario listas o de valores numéricos a un formato compatible con JSON. 
+    """Serializa un diccionario de diccionarios, diccionario listas o de valores numéricos a un formato compatible con JSON.
     Args:
         table (dict): Diccionario de diccionarios, listas o valores numéricos a serializar.
     Returns:
         dict: Diccionario serializado.
-    '''
+    """
+    if not table:
+        return {}
     serialized_table = {}
     for key, value in table.items():
         serialized_key = str(key)
@@ -50,6 +52,11 @@ class QAgentSSPSerializer:
         self.q_agent = q_agent
 
     def to_dict(self):
+        error_q_table = serialize_table(resta_diccionarios(self.q_agent.q_star, self.q_agent.q_table))
+        shortest_path = list(
+            map(lambda x: str(x), getattr(self.q_agent, "shortest_path", None))
+        )
+        optimal_policy = serialize_table(getattr(self.q_agent, "optimal_policy", {}))
         return {
             "strategy": str(self.q_agent.strategy),
             "num_episodes": getattr(self.q_agent, "num_episodes", None),
@@ -63,15 +70,10 @@ class QAgentSSPSerializer:
             "times_states": serialize_table(self.q_agent.times_states),
             "q_table": serialize_table(self.q_agent.q_table),
             "optimal_q_table": serialize_table(getattr(self.q_agent, "q_star", {})),
-            "error_q_table": serialize_table(resta_diccionarios(self.q_agent.q_star, self.q_agent.q_table)),
-            "optimal_policy": serialize_table(getattr(self.q_agent, "optimal_policy", None)),
+            "error_q_table": error_q_table,
+            "shortest_path": shortest_path,
+            "optimal_policy": optimal_policy,
         }
-
-
-
-
-
-
 
 
 if __name__ == "__main__":

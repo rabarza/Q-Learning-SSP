@@ -8,6 +8,7 @@ import os
 from city.app_graph import CityGraph, QUERIE_PARAMS
 from RLib.utils.file_utils import load_model_results, find_files_by_keyword
 from RLib.utils.plot_utils import plot_results_per_episode_comp_plotly
+from RLib.utils.serializers import QAgentSSPSerializer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
@@ -106,6 +107,28 @@ class ResultsVisualizer:
             selected_agents = []
 
         return selected_agents
+
+    def show_serialized_agents(self, selected_agents):
+        # Crear un diccionario para asociar el ID único con la representación de cadena
+        agent_options = {str(agent.id): str(agent) for agent in selected_agents}
+        # Selección de agente
+        selected_agent_id = st.selectbox(
+            "Selecciona un agente",
+            list(agent_options.keys()),  # Usar el ID único como valor de la opción
+            format_func=lambda x: agent_options[
+                x
+            ],  # Mostrar la representación de cadena en la interfaz
+            key="selected_agent",
+        )
+        # get the selected agent as agent object
+        selected_agent = next(
+            agent for agent in selected_agents if str(agent.id) == selected_agent_id
+        )
+        print("selected_agent", selected_agent)
+        # Serializar el agente seleccionado
+        serialized_agent = QAgentSSPSerializer(selected_agent).to_dict()
+        st.write(serialized_agent)
+
 
     def load_results(self):
         self.location_name, self.ruta = self.city_selectbox(
@@ -206,6 +229,8 @@ class ResultsVisualizer:
                         selected_agents, criteria
                     )
                     st.write(fig)
+                # Mostrar los resultados serializados
+                self.show_serialized_agents(selected_agents)
 
 
 if __name__ == "__main__":

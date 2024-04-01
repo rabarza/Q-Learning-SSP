@@ -144,7 +144,7 @@ class QAgentSSP:
         self,
         num_episodes=100,
         distribution="expectation-lognormal",
-        policy=None,
+        shortest_path=None,
         q_star=None,
         verbose=False,
     ):
@@ -159,8 +159,8 @@ class QAgentSSP:
             Distribución de probabilidad que se utiliza para generar los valores de recompensa. Puede ser:
                 - 'expectation-lognormal': distribución lognormal con media igual a la recompensa esperada.
                 - 'lognormal': distribución lognormal con media igual a 1.
-        policy : dict, optional
-            Política óptima definida sólo para los nodos del camino más corto, notar que no está definida para todos los nodos del grafo. The default is None.
+        shortest_path : dict, optional
+            Camino más corto entre el estado inicial y el estado terminal. The default is None.
         q_star : dict, optional
             Tabla Q* óptima. The default is None.
         verbose : bool, optional
@@ -173,7 +173,7 @@ class QAgentSSP:
         from RLib.utils.table_utils import max_norm, exploitation
 
         self.num_episodes = num_episodes
-        self.policy = policy
+        self.shortest_path = shortest_path
         self.distribution = distribution
 
         self.steps = np.zeros(num_episodes)
@@ -248,11 +248,11 @@ class QAgentSSP:
                     self.steps_best[episode], 1
                 )
                 max_norm_error_policy = max_norm(
-                    self.q_table, q_table_aux, policy=policy
+                    self.q_table, q_table_aux, path=shortest_path
                 )
-            elif policy:
+            elif shortest_path:
                 max_norm_error = max_norm(self.q_table, q_star)
-                max_norm_error_policy = max_norm(self.q_table, q_star, policy=policy)
+                max_norm_error_policy = max_norm(self.q_table, q_star, path=shortest_path)
             else:
                 max_norm_error = max_norm(self.q_table, q_star)
                 max_norm_error_policy = 0

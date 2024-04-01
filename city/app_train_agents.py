@@ -12,7 +12,11 @@ from time import sleep
 
 from RLib.environments.ssp import SSPEnv
 from RLib.agents.ssp import QAgentSSP
-from RLib.utils.dijkstra_utils import get_optimal_policy, get_q_table_for_policy
+from RLib.utils.dijkstra_utils import (
+    get_optimal_policy,
+    get_shortest_path_from_policy,
+    get_q_table_for_policy,
+)
 from RLib.utils.file_utils import save_model_results
 from RLib.action_selection.action_selector import (
     EpsilonGreedyActionSelector,
@@ -23,6 +27,7 @@ from RLib.action_selection.action_selector import (
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
+
 
 @st.cache_data(persist=True)
 def load_css(file_name):
@@ -81,24 +86,30 @@ def show():
         st.write(f"Estrategia seleccionada: {selected_strategy}")
 
     get_qstar_button = st.button("Calcular Políticas Óptimas y Tabla Q*")
-    # Crear un estado para policies y q_star
-    if "policies" not in st.session_state:
-        st.session_state.policies = None
-    if "q_star" not in st.session_state:
-        st.session_state.q_star = None
+    # Crear un estado para policies y optimal_q_table
+    if "shortest_path" not in st.session_state:
+        st.session_state.shortest_path = None
+    if "optimal_q_table" not in st.session_state:
+        st.session_state.optimal_q_table = None
+    if "optimal_policy" not in st.session_state:
+        st.session_state.optimal_policy = None
+        
 
     if get_qstar_button:
         with st.spinner("Calculando políticas óptimas y tabla Q*..."):
             # Obtener la política óptima para cada nodo en el grafo hasta el destino
-            policies = get_optimal_policy(G.G, dest_node)
-            optimal_policy = policies
+            optimal_policy = get_optimal_policy(G.G, dest_node)
+            shortest_path = get_shortest_path_from_policy(
+                optimal_policy, orig_node, dest_node
+            )
             print(f"\nPolítica óptima: {optimal_policy}\n")
-            
+
             # Obtener la tabla Q* a partir de las políticas óptimas
-            q_star = get_q_table_for_policy(G.G, policies, dest_node)
+            optimal_q_table = get_q_table_for_policy(G.G, optimal_policy, dest_node)
             # Guardar los resultados
-            st.session_state.policies = policies
-            st.session_state.q_star = q_star
+            st.session_state.optimal_policy = optimal_policy
+            st.session_state.optimal_q_table = optimal_q_table
+            st.session_state.shortest_path = shortest_path
         st.success("Políticas óptimas y tabla Q* calculadas!")
 
     # Usar st.form para agrupar sliders y botón de entrenamiento
@@ -125,7 +136,7 @@ def show():
             action_selector = EpsilonGreedyActionSelector(epsilon=epsilon)
         elif selected_strategy == "UCB1":
             c = st.slider(
-                "C", min_value=1.0, max_value=5.0, value=2.0, step=0.5
+                "C", min_value=1.0, max_value=15.0, value=2.0, step=0.5
             )  # Asegúrate de que todos los valores sean del mismo tipo (float).
             action_selector = UCB1ActionSelector(c=c)
         elif selected_strategy == "exp3 β dinámico":
@@ -152,21 +163,19 @@ def show():
                 agent = QAgentSSP(
                     env, alpha=alpha, gamma=gamma, action_selector=action_selector
                 )
-                
-                print(st.session_state.policies[orig_node])
-                
+
                 agent.train(
                     num_episodes,
-                    q_star=st.session_state.q_star,
-                    policy=st.session_state.policies[orig_node],
+                    shortest_path=st.session_state.shortest_path,
                     distribution="lognormal",
+                    q_star=st.session_state.optimal_q_table,
                 )
-                
+                print(st.session_state.optimal_policy)
                 # Asignar la política óptima al agente
-                agent.optimal_policy = optimal_policy
-                
+                agent.optimal_policy = st.session_state.optimal_policy
+
             st.success("Entrenamiento completado!")
-            
+
             with st.spinner("Guardando resultados..."):
                 # Crear carpetas para guardar resultados
                 strategies_list = ["e-greedy", "UCB1", "exp3"]
@@ -176,8 +185,12 @@ def show():
                     if not os.path.exists(temp_path):
                         os.makedirs(temp_path)
                 # Ruta para guardar resultados
-                agent_storage_path = os.path.join(BASE_DIR, 'results/',f"{location_name}/{orig_node}-{dest_node}/constant_alpha/{strategy}/")
-               
+                agent_storage_path = os.path.join(
+                    BASE_DIR,
+                    "results/",
+                    f"{location_name}/{orig_node}-{dest_node}/constant_alpha/{strategy}/",
+                )
+
                 # Si no existe la carpeta, crearla
                 if not os.path.exists(agent_storage_path):
                     os.makedirs(agent_storage_path)
@@ -185,5 +198,3 @@ def show():
                 save_model_results(
                     agent, nombre=f"QAgentSSP_{alpha:.2f}", path=agent_storage_path
                 )
-                
-

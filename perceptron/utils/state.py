@@ -10,7 +10,7 @@ def initialize_session_state_variables(*args, **kwargs):
     resultados en la aplicación.
     '''    
     for arg in args:
-        print(arg)
+        # print(arg)
         if arg not in st.session_state:
             st.session_state[arg] = None
     

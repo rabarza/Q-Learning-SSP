@@ -16,6 +16,10 @@ QUERIE_PARAMS = {
     'Santiago, Chile': {
         'query': 'Santiago, Chile',
         'network_type': 'drive',
+    },
+    'Peñaflor, Chile': {
+        'query': 'Peñaflor, Chile',
+        'network_type': 'drive',
     }
 }
 
@@ -24,6 +28,8 @@ def download_graph(parameters:dict, query:str='Piedmont, California'):
     if query == 'Piedmont, California':
         G = ox.graph_from_place(**parameters[query])
     if query == 'Santiago, Chile':
+        G = ox.graph_from_place(**parameters[query])
+    else:
         G = ox.graph_from_place(**parameters[query])
     G = ox.utils_graph.get_largest_component(G, strongly=True)
     return G

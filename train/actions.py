@@ -23,7 +23,7 @@ def get_action_selector(selected_strategy):
 
     elif selected_strategy == "UCB1":
         c = st.slider(
-            "C", min_value=1.0, max_value=5.0, value=2.0, step=0.5
+            "C", min_value=1.0, max_value=20.0, value=2.0, step=0.5
         )  # Asegúrar que todos los valores sean del mismo tipo (float).
         action_selector = UCB1ActionSelector(c=c)
     elif selected_strategy == "exp3 β dinámico":
