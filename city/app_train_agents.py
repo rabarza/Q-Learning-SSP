@@ -50,7 +50,7 @@ def show():
 
     # Visualizar en Streamlit
     st.markdown(
-        f"<h1>Entorno Seleccionado: {location_name}</h1>", unsafe_allow_html=True
+        f"<h1>Entorno Seleccionado: {location_name}. ({len(G.G.nodes())} Nodos)</h1>", unsafe_allow_html=True
     )
 
     # Interfaz para seleccionar el nodo inicial y final
@@ -181,9 +181,10 @@ def show():
                 strategies_list = ["e-greedy", "UCB1", "exp3"]
                 for element in strategies_list:
                     temp_path = f"results/{location_name}/{orig_node}-{dest_node}/constant_alpha/{element}/"
+                    files_dir = os.path.join(BASE_DIR, temp_path)
                     # Si no existe la carpeta, crearla
-                    if not os.path.exists(temp_path):
-                        os.makedirs(temp_path)
+                    if not os.path.exists(files_dir):
+                        os.makedirs(files_dir)
                 # Ruta para guardar resultados
                 agent_storage_path = os.path.join(
                     BASE_DIR,

@@ -1,5 +1,6 @@
 import os
 import random
+import json
 import streamlit as st
 import networkx as nx
 
@@ -203,7 +204,14 @@ class ResultsVisualizer:
                 fig = plot_results_per_episode_comp_plotly(selected_agents, criteria)
                 st.write(fig)
             # Mostrar los resultados del agente seleccionado
-            self.show_serialized_agents(selected_agents)
+            # self.show_serialized_agents(selected_agents)
+            st.download_button(
+                    label="Descargar resultados serializados",
+                    data=json.dumps([QAgentSSPSerializer(agent).to_dict() for agent in selected_agents]),
+                    file_name="results.json",
+                    mime="application/json",
+                )
+                
 
 
 class PerceptronApp:

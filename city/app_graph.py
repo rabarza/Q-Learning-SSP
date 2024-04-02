@@ -20,7 +20,12 @@ QUERIE_PARAMS = {
     'Peñaflor, Chile': {
         'query': 'Peñaflor, Chile',
         'network_type': 'drive',
-    }
+    },
+    # Add a small city
+    'Isla de Maipo, Chile': {
+        'query': 'Isla de Maipo, Chile',
+        'network_type': 'drive',
+    },
 }
 
 @st.cache_resource

@@ -5,6 +5,7 @@ sys.path.append("../city")  # Agrega el directorio city al sys.path
 
 import streamlit as st
 import os
+import json
 from city.app_graph import CityGraph, QUERIE_PARAMS
 from RLib.utils.file_utils import load_model_results, find_files_by_keyword
 from RLib.utils.plot_utils import plot_results_per_episode_comp_plotly
@@ -230,7 +231,17 @@ class ResultsVisualizer:
                     )
                     st.write(fig)
                 # Mostrar los resultados serializados
-                self.show_serialized_agents(selected_agents)
+                # self.show_serialized_agents(selected_agents)
+                # Descargar los resultados serializados en un archivo JSON
+                st.download_button(
+                    label="Descargar resultados serializados",
+                    data=json.dumps([QAgentSSPSerializer(agent).to_dict() for agent in selected_agents]),
+                    file_name="results.json",
+                    mime="application/json",
+                )
+                
+                    
+                
 
 
 if __name__ == "__main__":
