@@ -170,7 +170,6 @@ def show():
                     distribution="lognormal",
                     q_star=st.session_state.optimal_q_table,
                 )
-                print(st.session_state.optimal_policy)
                 # Asignar la política óptima al agente
                 agent.optimal_policy = st.session_state.optimal_policy
 
