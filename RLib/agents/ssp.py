@@ -63,9 +63,8 @@ class QAgentSSP:
             self.alpha_formula = "max(alpha, 1 / N(s,a))"
         else:
             self.alpha_formula = "alpha"
-            
-        self.id = id(self)
 
+        self.id = id(self)
 
     def __str__(self):
         return f"QAgentSSP(strategy={self.action_selector} alpha={self.alpha} gamma={self.gamma} alpha_formula={self.alpha_formula})"
@@ -122,6 +121,10 @@ class QAgentSSP:
         """
         if self.alpha_formula == "max(alpha, 1 / N(s,a))":
             return max(self.alpha, 1 / (self.times_actions[state][action] + 1))
+        elif self.alpha_formula == "1 / N(s,a)":
+            return 1 / (self.times_actions[state][action] + 1)
+        elif self.alpha_formula == "alpha":
+            return self.alpha
         else:
             return self.alpha
 
@@ -179,7 +182,7 @@ class QAgentSSP:
         self.steps = np.zeros(num_episodes)
         self.scores = np.zeros(num_episodes)
         self.avg_scores = np.zeros(num_episodes)
-        
+
         self.q_star = q_star
 
         # best
@@ -214,6 +217,7 @@ class QAgentSSP:
                 next_state, reward, done, info = self.env.take_action(
                     state, action, distribution
                 )
+
                 # Actualizar valores Q_table
                 q_old = self.q_table[state][action]
                 q_new = q_old * (1 - alpha) + alpha * (
@@ -252,7 +256,9 @@ class QAgentSSP:
                 )
             elif shortest_path:
                 max_norm_error = max_norm(self.q_table, q_star)
-                max_norm_error_policy = max_norm(self.q_table, q_star, path=shortest_path)
+                max_norm_error_policy = max_norm(
+                    self.q_table, q_star, path=shortest_path
+                )
             else:
                 max_norm_error = max_norm(self.q_table, q_star)
                 max_norm_error_policy = 0
@@ -288,17 +294,3 @@ class QAgentSSP:
             if self.env.terminal_state == state:
                 done = True
         return path
-
-    def plot_steps_per_episode(self):
-        """
-        Grafica la cantidad de pasos que tardó cada episodio en llegar a un estado terminal.
-        """
-        import matplotlib.pyplot as plt
-
-        plt.figure(dpi=100)
-        plt.plot(range(self.num_episodes), self.steps)
-        plt.title(self.strategy)
-        plt.xlabel("Episodes")
-        plt.ylabel("Steps")
-        plt.grid()
-        plt.show()
