@@ -6,7 +6,7 @@ sys.path.append("../city")  # Agrega el directorio city al sys.path
 import streamlit as st
 import os
 import json
-from city.app_graph import CityGraph, QUERIE_PARAMS
+from city.app_graph import CityGraphPlotter, QUERIE_PARAMS
 from RLib.utils.file_utils import load_model_results, find_files_by_keyword
 from RLib.utils.plot_utils import plot_results_per_episode_comp_plotly
 from RLib.utils.serializers import QAgentSSPSerializer
@@ -130,7 +130,6 @@ class ResultsVisualizer:
         serialized_agent = QAgentSSPSerializer(selected_agent).to_dict()
         st.write(serialized_agent)
 
-
     def load_results(self):
         self.location_name, self.ruta = self.city_selectbox(
             QUERIE_PARAMS, key_suffix="main_results"
@@ -162,7 +161,7 @@ class ResultsVisualizer:
     def show_results(self):
         self.load_css("styles.css")
 
-        G = CityGraph(QUERIE_PARAMS, query=self.location_name)
+        G = CityGraphPlotter(QUERIE_PARAMS, query=self.location_name)
 
         if not self.agents:
             st.title(f"No hay resultados para la ciudad de {self.location_name}")
@@ -199,19 +198,23 @@ class ResultsVisualizer:
 
             st.markdown(legend_html, unsafe_allow_html=True)
             G.show()
-            
+
             default_options = {
                 "strategies": ["e-greedy", "UCB1", "exp3"],
                 "alpha_type": ["Constante"],
             }
 
             selected_strategies = st.sidebar.multiselect(
-                "Selecciona Estrategias", ["e-greedy", "UCB1", "exp3"], default=default_options["strategies"]
+                "Selecciona Estrategias",
+                ["e-greedy", "UCB1", "exp3"],
+                default=default_options["strategies"],
             )
             selected_strategies.sort()
 
             selected_alpha_type = st.sidebar.multiselect(
-                "Selecciona Tipo de learning rate", ["Constante", "Dinámica"], default=default_options["alpha_type"]
+                "Selecciona Tipo de learning rate",
+                ["Constante", "Dinámica"],
+                default=default_options["alpha_type"],
             )
 
             if not selected_strategies:
@@ -235,13 +238,15 @@ class ResultsVisualizer:
                 # Descargar los resultados serializados en un archivo JSON
                 st.download_button(
                     label="Descargar resultados serializados",
-                    data=json.dumps([QAgentSSPSerializer(agent).to_dict() for agent in selected_agents]),
+                    data=json.dumps(
+                        [
+                            QAgentSSPSerializer(agent).to_dict()
+                            for agent in selected_agents
+                        ]
+                    ),
                     file_name="results.json",
                     mime="application/json",
                 )
-                
-                    
-                
 
 
 if __name__ == "__main__":
