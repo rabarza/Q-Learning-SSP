@@ -20,6 +20,7 @@ class QAgentSSP:
         alpha=0.01,
         gamma=1,
         dynamic_alpha=False,
+        alpha_formula="alpha",
         action_selector=EpsilonGreedyActionSelector(epsilon=0.1),
     ):
         """
@@ -34,6 +35,8 @@ class QAgentSSP:
         `gamma` -- factor de descuento. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
 
         `dynamic_alpha` -- indica si se debe utilizar alpha dinámico.
+        
+        `alpha_formula` -- fórmula para calcular el valor de alpha. Puede ser: 'max(alpha, 1 / N(s,a))', '1 / N(s,a)' o 'alpha'. Por defecto es 'alpha'.
 
         `action_selector` -- selector de acciones.
 
@@ -44,6 +47,8 @@ class QAgentSSP:
         self.num_actions = environment.num_actions
 
         self.alpha = alpha
+        self.dynamic_alpha = dynamic_alpha
+        self.alpha_formula = alpha_formula
         self.gamma = gamma
         self.action_selector = action_selector
         self.strategy = action_selector.strategy
@@ -57,12 +62,6 @@ class QAgentSSP:
         self.q_table = self.env.dict_states_actions_zeros()
 
         # self.id = datetime.now().strftime("%Y%m%d%H%M%S")
-
-        # alpha dinámico
-        if dynamic_alpha:
-            self.alpha_formula = "max(alpha, 1 / N(s,a))"
-        else:
-            self.alpha_formula = "alpha"
 
         self.id = id(self)
 
@@ -119,14 +118,17 @@ class QAgentSSP:
         """
         Retorna el valor de alpha para el estado y acción indicados.
         """
-        if self.alpha_formula == "max(alpha, 1 / N(s,a))":
-            return max(self.alpha, 1 / (self.times_actions[state][action] + 1))
-        elif self.alpha_formula == "1 / N(s,a)":
-            return 1 / (self.times_actions[state][action] + 1)
-        elif self.alpha_formula == "alpha":
-            return self.alpha
-        else:
-            return self.alpha
+        alpha = self.alpha
+        if not self.dynamic_alpha:
+            return alpha
+        # Realizar conteo de visitas al par estado-acción
+        t = self.times_actions[state][action]
+        # Reemplazar N(s,a) por t en la fórmula de alpha
+        formula = self.alpha_formula.replace("N(s,a)", "t")
+        # Evaluar la fórmula de alpha dinámico con el valor de t
+        return eval(formula)
+        
+
 
     def select_action(self, state):
         """
@@ -262,7 +264,7 @@ class QAgentSSP:
             else:
                 max_norm_error = max_norm(self.q_table, q_star)
                 max_norm_error_policy = 0
-
+            
             # Almacenar el error de la norma máxima
             self.max_norm_error[episode] = max_norm_error
             self.max_norm_error_policy[episode] = max_norm_error_policy
