@@ -1,4 +1,5 @@
 import os
+import time
 import random
 import json
 import streamlit as st
@@ -206,12 +207,13 @@ class ResultsVisualizer:
             # Mostrar los resultados del agente seleccionado
             # self.show_serialized_agents(selected_agents)
             st.download_button(
-                    label="Descargar resultados serializados",
-                    data=json.dumps([QAgentSSPSerializer(agent).to_dict() for agent in selected_agents]),
-                    file_name="results.json",
-                    mime="application/json",
-                )
-                
+                label="Descargar resultados serializados",
+                data=json.dumps(
+                    [QAgentSSPSerializer(agent).to_dict() for agent in selected_agents]
+                ),
+                file_name="results.json",
+                mime="application/json",
+            )
 
 
 class PerceptronApp:
@@ -358,7 +360,7 @@ class PerceptronApp:
         variables = [
             "graph",
             "policies",
-            "q_star",
+            "optimal_q_table",
             "q_star_serialized",
             "optimal_policy",
             "shortest_path",
@@ -377,114 +379,151 @@ class PerceptronApp:
         st.write("Nodo de origen:", orig_node)
         st.write("Nodo de destino:", dest_node)
 
-        default_options = {
-            "strategies": ["e-greedy", "UCB1", "exp3"],
-        }
-
-        # Seleccionar Estrategias
-        selected_strategy = st.sidebar.selectbox(
-            "Selecciona Estrategia",
-            ["e-greedy", "UCB1", "exp3 β constante", "exp3 β dinámico"],
-        )
-
-        if not selected_strategy:
-            st.write("No se ha seleccionado estrategia.")
-        else:
-            st.write(f"Estrategia seleccionada: {selected_strategy}")
+        # Crear un estado para botones de formularios
+        if "submit_button_strategy" not in st.session_state:
+            st.session_state.submit_button_strategy = False
+        if "submit_button_train_agent" not in st.session_state:
+            st.session_state.submit_button_train_agent = False
 
         get_qstar_button = st.button("Calcular Políticas Óptimas y Tabla Q*")
-
         if get_qstar_button:
             with st.spinner("Calculando políticas óptimas y tabla Q*..."):
                 # Obtener la política óptima para cada nodo en el grafo hasta el destino
                 optimal_policy = get_optimal_policy(G, dest_node)
-                print(f"\nPolítica óptima: {optimal_policy}\n")
-                # Obtener la tabla Q* completa a partir de las políticas óptimas
-                q_star = get_q_table_for_policy(G, optimal_policy, dest_node)
-                serialized_qtable = serialize_dict_of_dicts(q_star)
                 shortest_path = get_shortest_path_from_policy(
                     optimal_policy, orig_node, dest_node
                 )
+                print(f"\nPolítica óptima: {optimal_policy}\n")
+
+                # Obtener la tabla Q* completa a partir de las políticas óptimas
+                optimal_q_table = get_q_table_for_policy(G, optimal_policy, dest_node)
+                serialized_qtable = serialize_dict_of_dicts(optimal_q_table)
+
                 # Guardar los resultados en el estado de la sesión
-                # Este paso es necesario para que los resultados persistan en la sesión
-                # cada vez que se haga clic en el botón (o se renderice la aplicación nuevamente)
+                # Importante para mantener persistencia en datos de la sesión
                 st.session_state.optimal_policy = optimal_policy
-                st.session_state.q_star = q_star
+                st.session_state.optimal_q_table = optimal_q_table
                 st.session_state.q_star_serialized = serialized_qtable
                 st.session_state.shortest_path = shortest_path
             st.success("Políticas óptimas y tabla Q* calculadas!")
 
-        # Usar st.form para agrupar sliders y botón de entrenamiento
-        with st.form("training_form"):
-            num_episodes = st.number_input(
-                "Número de episodios",
-                min_value=1000,
-                max_value=1000000,
-                value=30000,
-                step=5000,
-            )
-            alpha = st.slider(
-                "Alpha", min_value=0.01, max_value=0.1, value=0.1, step=0.01
-            )
-            gamma = st.slider(
-                "Gamma", min_value=0.01, max_value=1.0, value=1.0, step=0.01
+        # Interfaz para seleccionar la estrategia de selección de acción
+        with st.form("strategy_form"):
+            st.write("Seleccionar Tipo de aprendizaje:")
+
+            selected_strategy = st.selectbox(
+                "Selecciona Estrategia",
+                ["e-greedy", "UCB1", "exp3 β constante", "exp3 β dinámico"],
             )
 
-            # Inicialización de variables para controlar la existencia de botón de envío
-            submit_button = False
-            epsilon = None
-            c = None
+            alpha_type = st.selectbox(
+                "Selecciona el tipo de tasa de aprendizaje α",
+                ["constante", "dinámico"],
+            )
 
-            action_selector = get_action_selector(selected_strategy)
-            submit_button = st.form_submit_button("Entrenar Agente")
+            st.session_state.alpha_type = alpha_type
+            st.session_state.selected_strategy = selected_strategy
+
+            submit_button_strategy = st.form_submit_button("Actualizar Estrategia")
+            if submit_button_strategy:
+                st.session_state.submit_button_strategy = True
+
+        if st.session_state.submit_button_strategy:
+            with st.form("training_form"):
+                num_episodes = st.number_input(
+                    "Número de episodios",
+                    min_value=1000,
+                    max_value=1000000,
+                    value=30000,
+                    step=5000,
+                )
+                # Selección de tasa de aprendizaje α
+                if st.session_state.alpha_type == "constante":
+                    alpha = st.slider(
+                        "Learning rate α",
+                        min_value=0.01,
+                        max_value=0.1,
+                        value=0.1,
+                        step=0.01,
+                    )
+                else:
+                    alpha = st.selectbox(
+                        "Learning rate α",
+                        [
+                            "1/N(s,a)",
+                            "max(0.01, 1/N(s,a))",
+                            "1/sqrt(N(s,a))",
+                            "1/log(N(s,a))",
+                        ],
+                    )
+                # Selección de factor de descuento γ
+                gamma = st.slider(
+                    "Discount Rate γ",
+                    min_value=0.01,
+                    max_value=1.0,
+                    value=1.0,
+                    step=0.01,
+                )
+
+                action_selector = get_action_selector(selected_strategy)
+                submit_button_train_agent = st.form_submit_button("Entrenar Agente")
+                st.session_state.submit_button_train_agent = submit_button_train_agent
 
         # Comenzar entrenamiento
-        if submit_button:
-
-            strategy = "exp3" if "exp3" in selected_strategy else selected_strategy
-            # Crear entorno
-            env = SSPEnv(grafo=G, start_state=orig_node, terminal_state=dest_node)
-            # Crear agente
-            agent = QAgentSSP(
-                env, alpha=alpha, gamma=gamma, action_selector=action_selector
-            )
-            agent.train(
-                num_episodes,
-                q_star=st.session_state.q_star,
-                shortest_path=st.session_state.shortest_path,
-                distribution="lognormal",
-            )
-            # Asignar la política óptima al agente
-            agent.optimal_policy = st.session_state.optimal_policy
-            # Crear carpetas para guardar resultados
-            strategies_list = ["e-greedy", "UCB1", "exp3"]
-
-            for element in strategies_list:
-                temp_path = (
-                    f"results/{file_name.split('.')[0]}/constant_alpha/{element}/"
+        if st.session_state.submit_button_train_agent:
+            with st.spinner(f"Entrenando el agente... {selected_strategy}"):
+                strategy = "exp3" if "exp3" in selected_strategy else selected_strategy
+                # Crear entorno
+                env = SSPEnv(grafo=G, start_state=orig_node, terminal_state=dest_node)
+                # Crear agente
+                agent = QAgentSSP(
+                    env, alpha=alpha, gamma=gamma, action_selector=action_selector
                 )
-                results_dir = os.path.join(BASE_DIR, temp_path)
-                # Si no existe la carpeta, crearla
-                if not os.path.exists(results_dir):
-                    os.makedirs(results_dir)
-
-            # Ruta para guardar resultados
-            agent_storage_path = os.path.join(
-                BASE_DIR,
-                f"results/{file_name.split('.')[0]}/constant_alpha/{strategy}/",
-            )
-            # Si no existe la carpeta, crearla
-            if not os.path.exists(agent_storage_path):
-                os.makedirs(agent_storage_path)
+                # Entrenar agente
+                agent.train(
+                    num_episodes,
+                    shortest_path=st.session_state.shortest_path,
+                    q_star=st.session_state.optimal_q_table,
+                    distribution="lognormal",
+                )
+                # Asignar la política óptima al agente
+                agent.optimal_policy = st.session_state.optimal_policy
+            st.success("Entrenamiento completado!")
 
             # Guardar resultados
-            save_model_results(
-                agent,
-                nombre=f"QAgentSSP_",
-                path=agent_storage_path,
-            )
+            with st.spinner("Guardando resultados..."):
+                # Crear carpetas para guardar resultados
+                strategies_list = ["e-greedy", "UCB1", "exp3"]
 
-            st.success("Entrenamiento completado!")
+                for element in strategies_list:
+                    temp_path = (
+                        f"results/{file_name.split('.')[0]}/constant_alpha/{element}/"
+                    )
+                    results_dir = os.path.join(BASE_DIR, temp_path)
+                    # Si no existe la carpeta, crearla
+                    if not os.path.exists(results_dir):
+                        os.makedirs(results_dir)
+
+                # Ruta para guardar resultados
+                agent_storage_path = os.path.join(
+                    BASE_DIR,
+                    f"results/{file_name.split('.')[0]}/constant_alpha/{strategy}/",
+                )
+                # Si no existe la carpeta, crearla
+                if not os.path.exists(agent_storage_path):
+                    os.makedirs(agent_storage_path)
+
+                # Guardar resultados
+                save_model_results(
+                    agent,
+                    nombre=f"QAgentSSP_",
+                    path=agent_storage_path,
+                )
+                st.session_state.submit_button_strategy = False
+                st.session_state.submit_button_train_agent = False
+            st.success("Resultados guardados!")
+            time.sleep(2)
+            st.experimental_rerun()
 
 
 if __name__ == "__main__":

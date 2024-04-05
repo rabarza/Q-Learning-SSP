@@ -7,6 +7,7 @@ import os
 import time
 import streamlit as st
 from city.app_graph import CityGraphPlotter, QUERIE_PARAMS
+from train.actions import get_action_selector
 
 # from .app_results import city_selectbox
 from time import sleep
@@ -19,6 +20,7 @@ from RLib.utils.dijkstra_utils import (
     get_q_table_for_policy,
 )
 from RLib.utils.file_utils import save_model_results
+from RLib.utils.serializers import serialize_table
 from RLib.action_selection.action_selector import (
     EpsilonGreedyActionSelector,
     DynamicEpsilonGreedyActionSelector,
@@ -84,17 +86,19 @@ def show():
     st.session_state.graph.show()
 
     # Crear un estado para policies y optimal_q_table
+    if "optimal_policy" not in st.session_state:
+        st.session_state.optimal_policy = None
     if "shortest_path" not in st.session_state:
         st.session_state.shortest_path = None
     if "optimal_q_table" not in st.session_state:
         st.session_state.optimal_q_table = None
-    if "optimal_policy" not in st.session_state:
-        st.session_state.optimal_policy = None
+    if "q_star_serialized" not in st.session_state:
+        st.session_state.q_star_serialized = None
     if "submit_button_strategy" not in st.session_state:
         st.session_state.submit_button_strategy = False
     if "submit_button_train_agent" not in st.session_state:
         st.session_state.submit_button_train_agent = False
-        
+
     get_qstar_button = st.button("Calcular Políticas Óptimas y Tabla Q*")
     if get_qstar_button:
         with st.spinner("Calculando políticas óptimas y tabla Q*..."):
@@ -107,10 +111,14 @@ def show():
 
             # Obtener la tabla Q* a partir de las políticas óptimas
             optimal_q_table = get_q_table_for_policy(G.graph, optimal_policy, dest_node)
-            # Guardar los resultados
+            serialized_q_table = serialize_table(optimal_q_table)
+
+            # Guardar los resultados en el estado de la sesión
+            # Importante para mantener persistencia en datos de la sesión
             st.session_state.optimal_policy = optimal_policy
-            st.session_state.optimal_q_table = optimal_q_table
             st.session_state.shortest_path = shortest_path
+            st.session_state.optimal_q_table = optimal_q_table
+            st.session_state.q_star_serialized = serialized_q_table
         st.success("Políticas óptimas y tabla Q* calculadas!")
 
     # Interfaz para seleccionar la estrategia de selección de acción
@@ -144,46 +152,31 @@ def show():
                 value=30000,
                 step=5000,
             )
-
+            # Selección de tasa de aprendizaje α
             if st.session_state.alpha_type == "constante":
                 alpha = st.slider(
-                    "Learning rate α", min_value=0.01, max_value=0.1, value=0.1, step=0.01
+                    "Learning rate α",
+                    min_value=0.01,
+                    max_value=0.1,
+                    value=0.1,
+                    step=0.01,
                 )
             else:
                 alpha = st.selectbox(
                     "Learning rate α",
-                    ["1/N(s,a)", "max(0.01, 1/N(s,a))", "1/sqrt(N(s,a))", "1/log(N(s,a))"],
+                    [
+                        "1/N(s,a)",
+                        "max(0.01, 1/N(s,a))",
+                        "1/sqrt(N(s,a))",
+                        "1/log(N(s,a))",
+                    ],
                 )
+            # Selección de factor de descuento γ
             gamma = st.slider(
                 "Discount Rate γ", min_value=0.01, max_value=1.0, value=1.0, step=0.01
             )
 
-            epsilon = None
-            c = None
-
-            if selected_strategy == "e-greedy":
-                epsilon = st.slider(
-                    "Epsilon", min_value=0.01, max_value=1.0, value=0.1, step=0.01
-                )
-                action_selector = EpsilonGreedyActionSelector(epsilon=epsilon)
-            elif selected_strategy == "UCB1":
-                c = st.slider(
-                    "C", min_value=1.0, max_value=15.0, value=2.0, step=0.5
-                )  # Asegúrate de que todos los valores sean del mismo tipo (float).
-                action_selector = UCB1ActionSelector(c=c)
-            elif selected_strategy == "exp3 β dinámico":
-                select_dynamic_beta = st.selectbox(
-                    "Selecciona el parámetro β dinámico",
-                    ["t", "t / T", "sqrt(t)", "log(t)"],
-                )
-                action_selector = Exp3ActionSelector(beta=select_dynamic_beta)
-
-            elif selected_strategy == "exp3 β constante":
-                fixed_beta = st.slider(
-                    "β", min_value=0.01, max_value=1.0, value=0.1, step=0.01
-                )
-                action_selector = Exp3ActionSelector(beta=fixed_beta)
-
+            action_selector = get_action_selector(selected_strategy)
             submit_button_train_agent = st.form_submit_button("Entrenar Agente")
             st.session_state.submit_button_train_agent = submit_button_train_agent
 
@@ -198,27 +191,29 @@ def show():
                 agent = QAgentSSP(
                     env, alpha=alpha, gamma=gamma, action_selector=action_selector
                 )
-
+                # Entrenar agente
                 agent.train(
                     num_episodes,
                     shortest_path=st.session_state.shortest_path,
-                    distribution="lognormal",
                     q_star=st.session_state.optimal_q_table,
+                    distribution="lognormal",
                 )
                 # Asignar la política óptima al agente
                 agent.optimal_policy = st.session_state.optimal_policy
-
             st.success("Entrenamiento completado!")
 
+            # Guardar resultados
             with st.spinner("Guardando resultados..."):
                 # Crear carpetas para guardar resultados
                 strategies_list = ["e-greedy", "UCB1", "exp3"]
+
                 for element in strategies_list:
                     temp_path = f"results/{location_name}/{orig_node}-{dest_node}/constant_alpha/{element}/"
-                    files_dir = os.path.join(BASE_DIR, temp_path)
+                    results_dir = os.path.join(BASE_DIR, temp_path)
                     # Si no existe la carpeta, crearla
-                    if not os.path.exists(files_dir):
-                        os.makedirs(files_dir)
+                    if not os.path.exists(results_dir):
+                        os.makedirs(results_dir)
+
                 # Ruta para guardar resultados
                 agent_storage_path = os.path.join(
                     BASE_DIR,
@@ -229,12 +224,18 @@ def show():
                 # Si no existe la carpeta, crearla
                 if not os.path.exists(agent_storage_path):
                     os.makedirs(agent_storage_path)
+
                 # Guardar resultados
                 save_model_results(
                     agent, nombre=f"QAgentSSP_{alpha:.2f}", path=agent_storage_path
                 )
-                
+
                 st.session_state.submit_button_strategy = False
+                st.session_state.submit_button_train_agent = False
             st.success("Resultados guardados!")
             time.sleep(2)
             st.experimental_rerun()
+
+
+if __name__ == "__main__":
+    show()
