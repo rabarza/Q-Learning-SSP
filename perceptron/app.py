@@ -40,13 +40,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GRAPHS_DIR_NAME = "networks"
 
 
-def get_selected_agents(
-    selected_alpha_type, selected_strategies, agents_const, agents_dyna
-):
-    selected_agents_fixed_alpha = []
-    selected_agents_dynamic_alpha = []
+def get_selected_agents(selected_alpha_type, selected_strategies, agents_const, agents_dyna):
+    is_constant = "Constante" in selected_alpha_type
+    is_dynamic = "Dinámica" in selected_alpha_type
 
-    if "Constante" in selected_alpha_type:
+    if is_constant:
         with st.form(key="alpha_form"):
             min_alpha, max_alpha = st.slider(
                 "Selecciona un rango de valores alpha",
@@ -55,7 +53,7 @@ def get_selected_agents(
                 value=(0.08, 0.1),
                 step=0.01,
             )
-            apply_button = st.form_submit_button("Aplicar")
+            apply_button = st.form_submit_button(label="Aplicar")
 
         st.write(f"Valor mínimo de alpha: {min_alpha}")
         st.write(f"Valor máximo de alpha: {max_alpha}")
@@ -66,18 +64,21 @@ def get_selected_agents(
             if agent.strategy in selected_strategies
             and min_alpha <= agent.alpha <= max_alpha
         ]
+    else:
+        selected_agents_fixed_alpha = []
 
-    if "Dinámica" in selected_alpha_type:
+    if is_dynamic:
         selected_agents_dynamic_alpha = [
             agent for agent in agents_dyna if agent.strategy in selected_strategies
         ]
-        st.latex(rf""" \alpha_t = {selected_agents_dynamic_alpha[0].alpha_formula} """)
+    else:
+        selected_agents_dynamic_alpha = []
 
-    if "Constante" in selected_alpha_type and "Dinámica" in selected_alpha_type:
+    if is_constant and is_dynamic:
         selected_agents = selected_agents_fixed_alpha + selected_agents_dynamic_alpha
-    elif "Constante" in selected_alpha_type:
+    elif is_constant:
         selected_agents = selected_agents_fixed_alpha
-    elif "Dinámica" in selected_alpha_type:
+    elif is_dynamic:
         selected_agents = selected_agents_dynamic_alpha
     else:
         selected_agents = []
@@ -168,6 +169,7 @@ class ResultsVisualizer:
         st.write(serialized_agent)
 
     def show_results(self):
+        # Forzar actualización de la página
         default_options = {
             "strategies": ["e-greedy", "UCB1", "exp3"],
             "alpha_type": ["Constante"],
@@ -475,10 +477,19 @@ class PerceptronApp:
                 strategy = "exp3" if "exp3" in selected_strategy else selected_strategy
                 # Crear entorno
                 env = SSPEnv(grafo=G, start_state=orig_node, terminal_state=dest_node)
-                # Crear agente
-                agent = QAgentSSP(
-                    env, alpha=alpha, gamma=gamma, action_selector=action_selector
-                )
+                # Crear agente (dependiendo de la tasa de aprendizaje α seleccionada)
+                if st.session_state.alpha_type == "constante":
+                    agent = QAgentSSP(
+                        env, alpha=alpha, gamma=gamma, action_selector=action_selector
+                    )
+                else:
+                    agent = QAgentSSP(
+                        env,
+                        dynamic_alpha=True,
+                        alpha_formula=alpha,
+                        gamma=gamma,
+                        action_selector=action_selector,
+                    )
                 # Entrenar agente
                 agent.train(
                     num_episodes,

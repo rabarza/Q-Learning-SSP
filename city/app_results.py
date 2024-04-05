@@ -15,6 +15,51 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
 
+def get_selected_agents(selected_alpha_type, selected_strategies, agents_const, agents_dyna):
+    is_constant = "Constante" in selected_alpha_type
+    is_dynamic = "Dinámica" in selected_alpha_type
+
+    if is_constant:
+        with st.form(key="alpha_form"):
+            min_alpha, max_alpha = st.slider(
+                "Selecciona un rango de valores alpha",
+                min_value=0.01,
+                max_value=0.1,
+                value=(0.08, 0.1),
+                step=0.01,
+            )
+            apply_button = st.form_submit_button(label="Aplicar")
+
+        st.write(f"Valor mínimo de alpha: {min_alpha}")
+        st.write(f"Valor máximo de alpha: {max_alpha}")
+
+        selected_agents_fixed_alpha = [
+            agent
+            for agent in agents_const
+            if agent.strategy in selected_strategies
+            and min_alpha <= agent.alpha <= max_alpha
+        ]
+    else:
+        selected_agents_fixed_alpha = []
+
+    if is_dynamic:
+        selected_agents_dynamic_alpha = [
+            agent for agent in agents_dyna if agent.strategy in selected_strategies
+        ]
+    else:
+        selected_agents_dynamic_alpha = []
+
+    if is_constant and is_dynamic:
+        selected_agents = selected_agents_fixed_alpha + selected_agents_dynamic_alpha
+    elif is_constant:
+        selected_agents = selected_agents_fixed_alpha
+    elif is_dynamic:
+        selected_agents = selected_agents_dynamic_alpha
+    else:
+        selected_agents = []
+
+    return selected_agents
+
 class ResultsVisualizer:
     def __init__(self):
         self.location_name = ""
@@ -59,55 +104,6 @@ class ResultsVisualizer:
         )
         ruta_carpeta = f"results/{location_name}/"
         return location_name, ruta_carpeta
-
-    @staticmethod
-    def get_selected_agents(
-        selected_alpha_type, selected_strategies, agents_const, agents_dyna
-    ):
-        selected_agents_fixed_alpha = []
-        selected_agents_dynamic_alpha = []
-
-        if "Constante" in selected_alpha_type:
-            with st.form(key="alpha_form"):
-                min_alpha, max_alpha = st.slider(
-                    "Selecciona un rango de valores alpha",
-                    min_value=0.01,
-                    max_value=0.1,
-                    value=(0.08, 0.1),
-                    step=0.01,
-                )
-                apply_button = st.form_submit_button(label="Aplicar")
-
-            st.write(f"Valor mínimo de alpha: {min_alpha}")
-            st.write(f"Valor máximo de alpha: {max_alpha}")
-
-            selected_agents_fixed_alpha = [
-                agent
-                for agent in agents_const
-                if agent.strategy in selected_strategies
-                and min_alpha <= agent.alpha <= max_alpha
-            ]
-
-        if "Dinámica" in selected_alpha_type:
-            selected_agents_dynamic_alpha = [
-                agent for agent in agents_dyna if agent.strategy in selected_strategies
-            ]
-            st.latex(
-                rf""" \alpha_t = {selected_agents_dynamic_alpha[0].alpha_formula} """
-            )
-
-        if "Constante" in selected_alpha_type and "Dinámica" in selected_alpha_type:
-            selected_agents = (
-                selected_agents_fixed_alpha + selected_agents_dynamic_alpha
-            )
-        elif "Constante" in selected_alpha_type:
-            selected_agents = selected_agents_fixed_alpha
-        elif "Dinámica" in selected_alpha_type:
-            selected_agents = selected_agents_dynamic_alpha
-        else:
-            selected_agents = []
-
-        return selected_agents
 
     def show_serialized_agents(self, selected_agents):
         # Crear un diccionario para asociar el ID único con la representación de cadena
@@ -221,7 +217,7 @@ class ResultsVisualizer:
                 st.write("No se han seleccionado estrategias.")
             else:
                 st.write(f"Estrategias seleccionadas: {selected_strategies}")
-                selected_agents = self.get_selected_agents(
+                selected_agents = get_selected_agents(
                     selected_alpha_type,
                     selected_strategies,
                     self.agents_const,

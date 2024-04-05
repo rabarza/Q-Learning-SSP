@@ -9,9 +9,6 @@ import streamlit as st
 from city.app_graph import CityGraphPlotter, QUERIE_PARAMS
 from train.actions import get_action_selector
 
-# from .app_results import city_selectbox
-from time import sleep
-
 from RLib.environments.ssp import SSPEnv
 from RLib.agents.ssp import QAgentSSP
 from RLib.utils.dijkstra_utils import (
@@ -187,10 +184,19 @@ def show():
                 env = SSPEnv(
                     grafo=G.graph, start_state=orig_node, terminal_state=dest_node
                 )
-                # Crear agente
-                agent = QAgentSSP(
-                    env, alpha=alpha, gamma=gamma, action_selector=action_selector
-                )
+                # Crear agente (dependiendo de la tasa de aprendizaje α seleccionada)
+                if st.session_state.alpha_type == "constante":
+                    agent = QAgentSSP(
+                        env, alpha=alpha, gamma=gamma, action_selector=action_selector
+                    )
+                else:
+                    agent = QAgentSSP(
+                        env,
+                        dynamic_alpha=True,
+                        alpha_formula=alpha,
+                        gamma=gamma,
+                        action_selector=action_selector,
+                    )
                 # Entrenar agente
                 agent.train(
                     num_episodes,
