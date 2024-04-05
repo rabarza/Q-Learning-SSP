@@ -128,8 +128,6 @@ class QAgentSSP:
         # Evaluar la fórmula de alpha dinámico con el valor de t
         return eval(formula)
         
-
-
     def select_action(self, state):
         """
         Seleccionar la siguiente acción a tomar
