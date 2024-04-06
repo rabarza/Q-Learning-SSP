@@ -126,7 +126,6 @@ def show():
     # Interfaz para seleccionar la estrategia de selección de acción
     with st.form("strategy_form"):
         st.write("Seleccionar Tipo de aprendizaje:")
-
         selected_strategy = st.selectbox(
             "Selecciona Estrategia",
             ["e-greedy", "UCB1", "exp3 β constante", "exp3 β dinámico"],
@@ -215,21 +214,25 @@ def show():
 
             # Guardar resultados
             with st.spinner("Guardando resultados..."):
-                # Crear carpetas para guardar resultados
+                # Crear carpetas para guardar resultados de acuerdo a la estrategia y tasa de aprendizaje
+                # Es importante crear las carpetas antes de guardar los resultados para evitar errores
+                # Incluso si no se guardan los resultados en esa carpeta
                 strategies_list = ["e-greedy", "UCB1", "exp3"]
-
                 for element in strategies_list:
-                    temp_path = f"results/{location_name}/{orig_node}-{dest_node}/constant_alpha/{element}/"
-                    results_dir = os.path.join(BASE_DIR, temp_path)
-                    # Si no existe la carpeta, crearla
-                    if not os.path.exists(results_dir):
-                        os.makedirs(results_dir)
-
+                    for alpha_type in ["constant_alpha", "dynamic_alpha"]:
+                        temp_path = f"results/{location_name}/{orig_node}-{dest_node}/{alpha_type}/{element}/"
+                        results_dir = os.path.join(BASE_DIR, temp_path)
+                        # Si no existe la carpeta, crearla
+                        if not os.path.exists(results_dir):
+                            os.makedirs(results_dir)
+                            
+                alpha_type_dict = {"constante": "constant_alpha", "dinámico": "dynamic_alpha"}
+                alpha_type_dir = alpha_type_dict[st.session_state.alpha_type]
                 # Ruta para guardar resultados
                 agent_storage_path = os.path.join(
                     BASE_DIR,
                     "results/",
-                    f"{location_name}/{orig_node}-{dest_node}/constant_alpha/{strategy}/",
+                    f"{location_name}/{orig_node}-{dest_node}/{alpha_type_dir}/{strategy}/",
                 )
 
                 # Si no existe la carpeta, crearla

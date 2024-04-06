@@ -443,7 +443,7 @@ class PerceptronApp:
                     "Número de episodios",
                     min_value=1000,
                     max_value=1000000,
-                    value=30000,
+                    value=10000,
                     step=5000,
                 )
                 # Selección de tasa de aprendizaje α
@@ -509,23 +509,28 @@ class PerceptronApp:
             st.success("Entrenamiento completado!")
 
             # Guardar resultados
+
             with st.spinner("Guardando resultados..."):
-                # Crear carpetas para guardar resultados
+                # Crear carpetas para guardar resultados de acuerdo a la estrategia y tasa de aprendizaje
+                # Es importante crear las carpetas antes de guardar los resultados para evitar errores
+                # Incluso si no se guardan los resultados en esa carpeta
                 strategies_list = ["e-greedy", "UCB1", "exp3"]
-
                 for element in strategies_list:
-                    temp_path = (
-                        f"results/{file_name.split('.')[0]}/constant_alpha/{element}/"
-                    )
-                    results_dir = os.path.join(BASE_DIR, temp_path)
-                    # Si no existe la carpeta, crearla
-                    if not os.path.exists(results_dir):
-                        os.makedirs(results_dir)
-
+                    for alpha_type in ["constant_alpha", "dynamic_alpha"]:
+                        temp_path = (
+                            f"results/{file_name.split('.')[0]}/{alpha_type}/{element}/"
+                        )
+                        results_dir = os.path.join(BASE_DIR, temp_path)
+                        # Si no existe la carpeta, crearla
+                        if not os.path.exists(results_dir):
+                            os.makedirs(results_dir)                
+                
+                alpha_type_dict = {"constante": "constant_alpha", "dinámico": "dynamic_alpha"}
+                alpha_type_dir = alpha_type_dict[st.session_state.alpha_type]   
                 # Ruta para guardar resultados
                 agent_storage_path = os.path.join(
                     BASE_DIR,
-                    f"results/{file_name.split('.')[0]}/constant_alpha/{strategy}/",
+                    f"results/{file_name.split('.')[0]}/{alpha_type_dir}/{strategy}/",
                 )
                 # Si no existe la carpeta, crearla
                 if not os.path.exists(agent_storage_path):
