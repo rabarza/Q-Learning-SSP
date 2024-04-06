@@ -89,6 +89,8 @@ def get_selected_agents(selected_alpha_type, selected_strategies, agents_const, 
 class ResultsVisualizer:
     def __init__(self):
         self.agents = []
+        self.agents_const = []
+        self.agents_dyna = []
 
     @staticmethod
     def load_agents(ruta_carpeta):
@@ -116,6 +118,8 @@ class ResultsVisualizer:
         file_name = st.selectbox(
             "Selecciona un grafo existente", get_folders_list(BASE_DIR)
         )
+        if not file_name:
+            return
         # Agregar la extensión .pkl para poder cargar el archivo
         file_name += ".pkl"
 
@@ -169,6 +173,9 @@ class ResultsVisualizer:
         st.write(serialized_agent)
 
     def show_results(self):
+        if not self.agents:
+            st.error("No hay agentes para mostrar.")
+            return
         # Forzar actualización de la página
         default_options = {
             "strategies": ["e-greedy", "UCB1", "exp3"],

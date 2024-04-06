@@ -127,9 +127,14 @@ class ResultsVisualizer:
         st.write(serialized_agent)
 
     def load_results(self):
+
         self.location_name, self.ruta = self.city_selectbox(
             QUERIE_PARAMS, key_suffix="main_results"
         )
+        if not os.path.exists(self.ruta):
+            st.error(f"No se encontraron resultados para {self.location_name}")
+            return
+        
         self.ruta = os.path.join(BASE_DIR, self.ruta)
         sub_folders = [
             carpeta

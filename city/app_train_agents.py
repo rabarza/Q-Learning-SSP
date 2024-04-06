@@ -52,8 +52,13 @@ def show():
         G = CityGraphPlotter(QUERIE_PARAMS, query=location_name)
         st.session_state.location_name = location_name
         st.session_state.graph = G
+    elif st.session_state.graph is None:
+        G = CityGraphPlotter(QUERIE_PARAMS, query=location_name)
+        st.session_state.graph = G
     else:
         G = st.session_state.graph
+        
+    print(f"Entorno Seleccionado: {location_name}. ({len(G.graph.nodes())} Nodos)")
 
     # Visualizar en Streamlit
     st.markdown(
