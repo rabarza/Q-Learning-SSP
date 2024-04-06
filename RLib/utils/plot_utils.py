@@ -7,15 +7,19 @@ import plotly.graph_objects as go
 
 #======================= Get label =======================
 
-def get_label(model):
-    if model.strategy in ['softmax']:
-        label = f'η = {model.action_selector.tau}, α = {model.alpha:.2f}'
-    elif model.strategy in ['exp3']:
-        label = f'η = {model.action_selector.beta_formula}, α = {model.alpha:.2f}'
-    elif model.strategy in ['e-greedy', 'e-decay', 'e-truncated']:
-        label = f'ε = {model.action_selector.epsilon}, α = {model.alpha:.2f}'
-    elif model.strategy in ['UCB1']:
-        label = f'c = {model.action_selector.c}, α = {model.alpha:.2f}'
+def get_label(agent):
+    # Adding the label by the strategy of the agent
+    if agent.strategy in ['softmax']:
+        label = f'η = {agent.action_selector.tau}, α = {agent.alpha:.2f}'
+    elif agent.strategy in ['exp3']:
+        label = f'η = {agent.action_selector.beta_formula}, α = {agent.alpha:.2f}'
+    elif agent.strategy in ['e-greedy', 'e-decay', 'e-truncated']:
+        label = f'ε = {agent.action_selector.epsilon}, α = {agent.alpha:.2f}'
+    elif agent.strategy in ['UCB1']:
+        label = f'c = {agent.action_selector.c}, α = {agent.alpha:.2f}'
+    if agent.dynamic_alpha:
+        label += ' (Dynamic α)'
+    
     return label
 
 

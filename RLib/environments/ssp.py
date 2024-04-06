@@ -476,5 +476,4 @@ class SSPEnv:
 
 
 if __name__ == "__main__":
-    # Tu código aquí
     pass

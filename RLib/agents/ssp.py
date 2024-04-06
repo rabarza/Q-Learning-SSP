@@ -26,19 +26,26 @@ class QAgentSSP:
         """
         Parámetros:
 
-        `environment` -- entorno en el que se encuentra el agente.
+        `environment`: SSPEnv (objeto de la clase SSPEnv)
+            entorno en el que se encuentra el agente.
 
-        `epsilon` -- probabilidad de exploración. Se utiliza en las estrategias e-greedy, e-truncated y e-decay.
+        `epsilon`: float
+            probabilidad de exploración. Se utiliza en las estrategias e-greedy, e-truncated y e-decay.
 
-        `alpha` -- tasa de aprendizaje. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
+        `alpha`: float 
+            tasa de aprendizaje. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
 
-        `gamma` -- factor de descuento. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
+        `gamma`: float
+            factor de descuento. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
 
-        `dynamic_alpha` -- indica si se debe utilizar alpha dinámico.
+        `dynamic_alpha`: bool
+            indica si se debe utilizar alpha dinámico.
         
-        `alpha_formula` -- fórmula para calcular el valor de alpha. Puede ser: 'max(alpha, 1 / N(s,a))', '1 / N(s,a)' o 'alpha'. Por defecto es 'alpha'.
+        `alpha_formula`: str
+            fórmula para calcular el valor de alpha. Puede ser: 'max(alpha, 1 / N(s,a))', '1 / N(s,a)' o 'alpha'. Por defecto es 'alpha'.
 
-        `action_selector` -- selector de acciones.
+        `action_selector`: ActionSelector (objeto de la clase ActionSelector)
+            selector de acciones.
 
         """
 
@@ -79,13 +86,9 @@ class QAgentSSP:
         """
         Retorna el valor máximo Q(s,a) para un estado s
         """
-        if state in self.q_table and self.q_table[state]:
-            return max(list(self.q_table[state].values()))
-        else:
-            # Devuelve un valor predeterminado (por ejemplo, 0) si el estado no está en q_table o su diccionario de acciones está vacío.
-            raise Exception(
-                f"El estado {state} no está en q_table o su diccionario de acciones está vacío."
-            )
+        assert state in self.q_table, f"El estado {state} no está en q_table."
+        assert self.q_table[state], "No hay acciones disponibles en el estado {state}"
+        return max(list(self.q_table[state].values()))
 
     def random_action(self, state):
         """
@@ -196,7 +199,7 @@ class QAgentSSP:
         self.max_norm_error_policy = np.zeros(num_episodes)
 
         q_table_aux = copy.deepcopy(self.q_table)  # Cambios temporales
-
+        # tasa de descuento
         gamma = self.gamma
         # inicializar tabla de valores q
         # self.q_table = self.env.dict_states_actions_random()
