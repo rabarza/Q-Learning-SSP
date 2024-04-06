@@ -91,7 +91,7 @@ class QAgent:
         return action
 
 
-class QAgentSSP:
+class QAgentSSP(QAgent):
     """
     Agente que resuelve el problema del laberinto usando el algoritmo Q-Learning.
     """
@@ -150,7 +150,7 @@ class QAgentSSP:
 
     def __str__(self):
         return f"QAgentSSP(strategy={self.action_selector} alpha={self.alpha} gamma={self.gamma} alpha_formula={self.alpha_formula})"
-
+    
     def train(
         self,
         num_episodes=100,
