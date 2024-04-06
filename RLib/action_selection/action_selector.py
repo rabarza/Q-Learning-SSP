@@ -25,13 +25,16 @@ class ActionSelector(object):
 
     def __str__(self):
         return self.__class__.__name__ + str(self.params)
+    
+    def get_label(self):
+        return f"{self.__class__.__name__.replace('ActionSelector', '')}"
 
 
 class EpsilonGreedyActionSelector(ActionSelector):
     @auto_super_init
     def __init__(self, epsilon=0.1):
         """epsilon: probabilidad de seleccionar una acción aleatoria en lugar de la mejor acción según Q(s,a)"""
-        self.epsilon = epsilon # equivalent to kwargs.pop('epsilon', 0.1)
+        self.epsilon = epsilon  # equivalent to kwargs.pop('epsilon', 0.1)
         self.strategy = "e-greedy"
         return locals()  # Dictionary with the local variables
 
@@ -41,6 +44,9 @@ class EpsilonGreedyActionSelector(ActionSelector):
         num = np.random.random()  # Se genera un número aleatorio entre 0 y 1
         # Se explora con probabilidad epsilon y se explota con probabilidad 1-epsilon
         return explore_action if num <= self.epsilon else greedy_action
+
+    def get_label(self):
+        return f"ε = {self.epsilon}"
 
 
 class DynamicEpsilonGreedyActionSelector(ActionSelector):
@@ -74,6 +80,9 @@ class DynamicEpsilonGreedyActionSelector(ActionSelector):
         num = np.random.random()  # Se genera un número aleatorio entre 0 y 1
         # Se explora con probabilidad epsilon y se explota con probabilidad 1-epsilon
         return explore_action if num <= epsilon else greedy_action
+
+    def get_label(self):
+        return f"ε = min(1, {self.c} * K / ({self.d}^2 * t))"
 
 
 class UCB1ActionSelector(ActionSelector):
@@ -113,6 +122,9 @@ class UCB1ActionSelector(ActionSelector):
             action = list(agent.q_table[state].keys())[action_idx]
         # Devolver acción
         return action
+
+    def get_label(self):
+        return f"c = {self.c}"
 
 
 class Exp3ActionSelector(ActionSelector):
@@ -169,6 +181,9 @@ class Exp3ActionSelector(ActionSelector):
                 f"Error al seleccionar acción en estado {state}. Probabilidades: {probabilities}. Acciones: {q_actions}"
             )
         return action
+
+    def get_label(self):
+        return f"η = {self.beta_formula}"
 
 
 if __name__ == "__main__":
