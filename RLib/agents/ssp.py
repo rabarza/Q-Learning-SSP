@@ -9,71 +9,13 @@ from stqdm import stqdm
 from RLib.action_selection.action_selector import EpsilonGreedyActionSelector
 
 
-class QAgentSSP:
+class QAgent:
     """
-    Agente que resuelve el problema del laberinto usando el algoritmo Q-Learning.
+    Clase base para el agente Q-Learning.
     """
 
-    def __init__(
-        self,
-        environment,
-        alpha=0.01,
-        gamma=1,
-        dynamic_alpha=False,
-        alpha_formula="alpha",
-        action_selector=EpsilonGreedyActionSelector(epsilon=0.1),
-    ):
-        """
-        Parámetros:
-
-        `environment`: SSPEnv (objeto de la clase SSPEnv)
-            entorno en el que se encuentra el agente.
-
-        `epsilon`: float
-            probabilidad de exploración. Se utiliza en las estrategias e-greedy, e-truncated y e-decay.
-
-        `alpha`: float 
-            tasa de aprendizaje. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
-
-        `gamma`: float
-            factor de descuento. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
-
-        `dynamic_alpha`: bool
-            indica si se debe utilizar alpha dinámico.
-        
-        `alpha_formula`: str
-            fórmula para calcular el valor de alpha. Puede ser: 'max(alpha, 1 / N(s,a))', '1 / N(s,a)' o 'alpha'. Por defecto es 'alpha'.
-
-        `action_selector`: ActionSelector (objeto de la clase ActionSelector)
-            selector de acciones.
-
-        """
-
-        self.env = environment
-        self.num_states = environment.num_states
-        self.num_actions = environment.num_actions
-
-        self.alpha = alpha
-        self.dynamic_alpha = dynamic_alpha
-        self.alpha_formula = alpha_formula
-        self.gamma = gamma
-        self.action_selector = action_selector
-        self.strategy = action_selector.strategy
-        # Se cuenta la cantidad de veces que se tomo una accion en cada estado N(s,a)
-        self.times_actions = self.env.dict_states_actions_zeros()
-
-        # Se cuenta la cantidad de veces que se visita un estado N(s)
-        self.times_states = self.env.dict_states_zeros()
-
-        # Se inicializa la matriz Q(s,a) con valores aleatorios
-        self.q_table = self.env.dict_states_actions_zeros()
-
-        # self.id = datetime.now().strftime("%Y%m%d%H%M%S")
-
-        self.id = id(self)
-
-    def __str__(self):
-        return f"QAgentSSP(strategy={self.action_selector} alpha={self.alpha} gamma={self.gamma} alpha_formula={self.alpha_formula})"
+    def __init__(self):
+        pass
 
     def argmax_q_table(self, state):
         """
@@ -94,6 +36,8 @@ class QAgentSSP:
         """
         Retorna una acción aleatoria a' de Q(s,a')
         """
+        assert state in self.q_table, f"El estado {state} no está en q_table."
+        assert self.q_table[state], "No hay acciones disponibles en el estado {state}"
         keys = list(self.q_table[state].keys())
         size = len(keys)
         index = np.random.randint(0, size)
@@ -130,7 +74,7 @@ class QAgentSSP:
         formula = self.alpha_formula.replace("N(s,a)", "t")
         # Evaluar la fórmula de alpha dinámico con el valor de t
         return eval(formula)
-        
+
     def select_action(self, state):
         """
         Seleccionar la siguiente acción a tomar
@@ -145,6 +89,67 @@ class QAgentSSP:
         self.increment_times_state_action(state, action)
         # Devolver acción
         return action
+
+
+class QAgentSSP:
+    """
+    Agente que resuelve el problema del laberinto usando el algoritmo Q-Learning.
+    """
+
+    def __init__(
+        self,
+        environment,
+        alpha=0.01,
+        gamma=1,
+        dynamic_alpha=False,
+        alpha_formula="alpha",
+        action_selector=EpsilonGreedyActionSelector(epsilon=0.1),
+    ):
+        """
+        Parámetros:
+
+        `environment`: SSPEnv (objeto de la clase SSPEnv)
+            entorno en el que se encuentra el agente.
+
+        `epsilon`: float
+            probabilidad de exploración. Se utiliza en las estrategias e-greedy, e-truncated y e-decay.
+
+        `alpha`: float
+            tasa de aprendizaje. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
+
+        `gamma`: float
+            factor de descuento. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
+
+        `dynamic_alpha`: bool
+            indica si se debe utilizar alpha dinámico.
+
+        `alpha_formula`: str
+            fórmula para calcular el valor de alpha. Puede ser: 'max(alpha, 1 / N(s,a))', '1 / N(s,a)' o 'alpha'. Por defecto es 'alpha'.
+
+        `action_selector`: ActionSelector (objeto de la clase ActionSelector)
+            selector de acciones.
+
+        """
+        super().__init__()
+        self.env = environment
+        self.num_states = environment.num_states
+        self.num_actions = environment.num_actions
+        self.alpha = alpha
+        self.dynamic_alpha = dynamic_alpha
+        self.alpha_formula = alpha_formula
+        self.gamma = gamma
+        self.action_selector = action_selector
+        self.strategy = action_selector.strategy
+        # Se cuenta la cantidad de veces que se tomo una accion en cada estado N(s,a)
+        self.times_actions = self.env.dict_states_actions_zeros()
+        # Se cuenta la cantidad de veces que se visita un estado N(s)
+        self.times_states = self.env.dict_states_zeros()
+        # Se inicializa la matriz Q(s,a) con valores aleatorios
+        self.q_table = self.env.dict_states_actions_zeros()
+        self.id = id(self)
+
+    def __str__(self):
+        return f"QAgentSSP(strategy={self.action_selector} alpha={self.alpha} gamma={self.gamma} alpha_formula={self.alpha_formula})"
 
     def train(
         self,
@@ -265,7 +270,7 @@ class QAgentSSP:
             else:
                 max_norm_error = max_norm(self.q_table, q_star)
                 max_norm_error_policy = 0
-            
+
             # Almacenar el error de la norma máxima
             self.max_norm_error[episode] = max_norm_error
             self.max_norm_error_policy[episode] = max_norm_error_policy

@@ -8,6 +8,21 @@ import plotly.graph_objects as go
 #======================= Get label =======================
 
 def get_label(agent):
+    '''
+    Obtiene la etiqueta para el agente en el gráfico de comparación de modelos.
+    
+    Parameters
+    ----------
+    agent: QAgent
+        Agente QAgent
+
+    Returns
+    -------
+    label: str
+        Etiqueta para el agente en el gráfico
+    '''
+    
+    label = {'strategy': '', 'alpha': ''}
     # Adding the label by the strategy of the agent
     if agent.strategy in ['softmax']:
         label = f'η = {agent.action_selector.tau}, α = {agent.alpha:.2f}'
