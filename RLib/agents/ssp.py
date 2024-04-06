@@ -181,7 +181,6 @@ class QAgentSSP:
         -------
         None
         """
-        from RLib.utils.table_utils import max_norm, exploitation
 
         self.num_episodes = num_episodes
         self.shortest_path = shortest_path
