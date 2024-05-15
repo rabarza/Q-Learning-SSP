@@ -284,7 +284,7 @@ class QAgentSSP(QAgent):
             self.scores[episode] = total_score
             self.avg_scores[episode] = total_score / max(self.steps[episode], 1)
             # Calcular el regret
-            self.regret[episode] = max(optimal_cost - total_score, 0)
+            self.regret[episode] = episode * optimal_cost - np.sum(self.scores[:episode])
             self.cumulative_regret[episode] = np.sum(self.regret)
 
             # Mostrar información de la ejecución
