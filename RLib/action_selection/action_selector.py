@@ -25,7 +25,7 @@ class ActionSelector(object):
 
     def __str__(self):
         return self.__class__.__name__ + str(self.params)
-    
+
     def get_label(self):
         return f"{self.__class__.__name__.replace('ActionSelector', '')}"
 
@@ -155,6 +155,7 @@ class Exp3ActionSelector(ActionSelector):
     def select_action(self, agent, state, normalize=True):
         t = agent.times_states[state]
         T = agent.num_episodes
+
         beta = (
             eval(self.beta_formula)
             if self.beta_type == "dynamic"

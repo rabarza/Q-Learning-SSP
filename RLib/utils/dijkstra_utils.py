@@ -2,6 +2,7 @@ from RLib.distributions.distributions import expected_time
 from RLib.environments.ssp import get_edge_length, get_edge_speed
 from RLib.utils.table_utils import dict_states_actions_zeros
 from stqdm import stqdm
+from tqdm import tqdm
 
 
 # ======================= Dijkstra =======================
@@ -88,8 +89,8 @@ def get_shortest_path_from_parents(parents, source, target):
 
 
 def get_shortest_path_from_policy(policy, source, target):
-    '''Retorna el camino más corto desde el nodo de origen al nodo de destino a partir de la política óptima.
-    
+    """Retorna el camino más corto desde el nodo de origen al nodo de destino a partir de la política óptima.
+
     Parameters
     ----------
     policy: dict
@@ -98,13 +99,13 @@ def get_shortest_path_from_policy(policy, source, target):
         nodo de origen
     target: int
         nodo de destino
-    
+
     Returns
     -------
     path: list
         lista con el camino más corto desde el nodo de origen al nodo de destino. Tiene la forma [nodo, ..., nodo]
-    '''
-    
+    """
+
     path = [source]
     node = source
     while node != target:
@@ -203,23 +204,30 @@ def get_qtable_for_semipolicy(graph, policy, dest):
     return q_table
 
 
-def get_q_table_for_policy(graph, policy, dest_node):
+def get_q_table_for_policy(graph, policy, dest_node, st=True):
     """Retorna la tabla Q óptima a partir de las políticas óptimas de cada nodo.
     Tiene la forma {estado: {accion: valor, ..., accion: valor}, ..., estado: {accion: valor, ..., accion: valor}}
     """
     from RLib.environments.ssp import get_edge_cost, get_cumulative_edges_cost
 
     q_star = dict_states_actions_zeros(graph)
-    for state in stqdm(q_star.keys(), desc="Calculando tabla Q"):
-        if state == dest_node:
-            continue
-        for action in q_star[state].keys():
-            tij = get_edge_cost(
-                graph, state, action
-            )  # costo de ir desde el estado 'state' al estado 'action'
 
-            # Obtener la política de todos los nodos del camino más corto desde el nodo 'state' al nodo de destino 'dest_node'
-            q_star[state][action] = -(
-                tij + get_cumulative_edges_cost(graph, policy, action, dest_node)
-            )
+    if st:
+        for state in stqdm(q_star.keys(), desc="Calculando tabla Q"):
+            if state == dest_node:
+                continue
+            for action in q_star[state].keys():
+                tij = get_edge_cost(graph, state, action)
+                q_star[state][action] = -(
+                    tij + get_cumulative_edges_cost(graph, policy, action, dest_node)
+                )
+    else:
+        for state in tqdm(q_star.keys(), desc="Calculando tabla Q"):
+            if state == dest_node:
+                continue
+            for action in q_star[state].keys():
+                tij = get_edge_cost(graph, state, action)
+                q_star[state][action] = -(
+                    tij + get_cumulative_edges_cost(graph, policy, action, dest_node)
+                )
     return q_star

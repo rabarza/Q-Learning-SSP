@@ -109,7 +109,7 @@ def show():
             shortest_path = get_shortest_path_from_policy(
                 optimal_policy, orig_node, dest_node
             )
-            print(f"\nPolítica óptima: {optimal_policy}\n")
+            # print(f"\nPolítica óptima: {optimal_policy}\n")
 
             # Obtener la tabla Q* a partir de las políticas óptimas
             optimal_q_table = get_q_table_for_policy(G.graph, optimal_policy, dest_node)
@@ -128,7 +128,7 @@ def show():
         st.write("Seleccionar Tipo de aprendizaje:")
         selected_strategy = st.selectbox(
             "Selecciona Estrategia",
-            ["e-greedy", "UCB1", "exp3 β constante", "exp3 β dinámico"],
+            ["e-greedy", "UCB1", "exp3 η constante", "exp3 η dinámico"],
         )
 
         alpha_type = st.selectbox(
@@ -150,7 +150,7 @@ def show():
                 "Número de episodios",
                 min_value=1000,
                 max_value=1000000,
-                value=30000,
+                value=50000,
                 step=5000,
             )
             # Selección de tasa de aprendizaje α
@@ -168,8 +168,8 @@ def show():
                     [
                         "1/N(s,a)",
                         "max(0.01, 1/N(s,a))",
-                        "1/sqrt(N(s,a))",
-                        "1/log(N(s,a))",
+                        "1 / sqrt(N(s,a))",
+                        "1 / log(N(s,a) + 1)",
                     ],
                 )
             # Selección de factor de descuento γ
@@ -241,7 +241,7 @@ def show():
 
                 # Guardar resultados
                 save_model_results(
-                    agent, nombre=f"QAgentSSP_{alpha:.2f}", path=agent_storage_path
+                    agent, nombre=f"QAgentSSP_", path=agent_storage_path
                 )
 
                 st.session_state.submit_button_strategy = False

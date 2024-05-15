@@ -1,4 +1,5 @@
 import numpy as np
+from math import sqrt, log
 import matplotlib.pyplot as plt
 import random
 import copy
@@ -7,6 +8,7 @@ from datetime import datetime
 from RLib.utils.table_utils import max_norm, exploitation
 from stqdm import stqdm
 from RLib.action_selection.action_selector import EpsilonGreedyActionSelector
+from RLib.utils.table_utils import max_q_table
 
 
 class QAgent:
@@ -29,7 +31,7 @@ class QAgent:
         Retorna el valor máximo Q(s,a) para un estado s
         """
         assert state in self.q_table, f"El estado {state} no está en q_table."
-        assert self.q_table[state], "No hay acciones disponibles en el estado {state}"
+        assert self.q_table[state], f"No hay acciones disponibles en el estado {state}"
         return max(list(self.q_table[state].values()))
 
     def random_action(self, state):
@@ -37,7 +39,7 @@ class QAgent:
         Retorna una acción aleatoria a' de Q(s,a')
         """
         assert state in self.q_table, f"El estado {state} no está en q_table."
-        assert self.q_table[state], "No hay acciones disponibles en el estado {state}"
+        assert self.q_table[state], f"No hay acciones disponibles en el estado {state}"
         keys = list(self.q_table[state].keys())
         size = len(keys)
         index = np.random.randint(0, size)
@@ -73,7 +75,9 @@ class QAgent:
         # Reemplazar N(s,a) por t en la fórmula de alpha
         formula = self.alpha_formula.replace("N(s,a)", "t")
         # Evaluar la fórmula de alpha dinámico con el valor de t
-        return eval(formula)
+        alpha_value = eval(formula)
+        # print(f"alpha_value: {alpha_value}, state: {state}, action: {action}, t: {t}")
+        return alpha_value
 
     def select_action(self, state):
         """
@@ -150,7 +154,7 @@ class QAgentSSP(QAgent):
 
     def __str__(self):
         return f"QAgentSSP(strategy={self.action_selector} alpha={self.alpha} gamma={self.gamma} alpha_formula={self.alpha_formula})"
-    
+
     def train(
         self,
         num_episodes=100,
@@ -189,6 +193,11 @@ class QAgentSSP(QAgent):
         self.steps = np.zeros(num_episodes)
         self.scores = np.zeros(num_episodes)
         self.avg_scores = np.zeros(num_episodes)
+        self.regret = np.zeros(num_episodes)
+        self.cumulative_regret = np.zeros(num_episodes)
+
+        # Obtener el costo óptimo para calcular el regret
+        optimal_cost = max_q_table(q_star, self.env.start_state)
 
         self.q_star = q_star
 
@@ -205,8 +214,6 @@ class QAgentSSP(QAgent):
         q_table_aux = copy.deepcopy(self.q_table)  # Cambios temporales
         # tasa de descuento
         gamma = self.gamma
-        # inicializar tabla de valores q
-        # self.q_table = self.env.dict_states_actions_random()
 
         for episode in stqdm(
             range(num_episodes), desc="Completado", ncols=100, leave=True
@@ -276,6 +283,9 @@ class QAgentSSP(QAgent):
             # Almacenar cantidad promedio de valores q y del episodio
             self.scores[episode] = total_score
             self.avg_scores[episode] = total_score / max(self.steps[episode], 1)
+            # Calcular el regret
+            self.regret[episode] = max(optimal_cost - total_score, 0)
+            self.cumulative_regret[episode] = np.sum(self.regret)
 
             # Mostrar información de la ejecución
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error policy: {max_norm_error_policy:.3f}"

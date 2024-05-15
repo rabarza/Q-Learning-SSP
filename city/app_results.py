@@ -15,7 +15,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
 
-def get_selected_agents(selected_alpha_type, selected_strategies, agents_const, agents_dyna):
+def get_selected_agents(
+    selected_alpha_type, selected_strategies, agents_const, agents_dyna
+):
     is_constant = "Constante" in selected_alpha_type
     is_dynamic = "Dinámica" in selected_alpha_type
 
@@ -59,6 +61,7 @@ def get_selected_agents(selected_alpha_type, selected_strategies, agents_const, 
         selected_agents = []
 
     return selected_agents
+
 
 class ResultsVisualizer:
     def __init__(self):
@@ -131,11 +134,11 @@ class ResultsVisualizer:
         self.location_name, self.ruta = self.city_selectbox(
             QUERIE_PARAMS, key_suffix="main_results"
         )
-        if not os.path.exists(self.ruta):
-            st.error(f"No se encontraron resultados para {self.location_name}")
-            return
-        
         self.ruta = os.path.join(BASE_DIR, self.ruta)
+        if not os.path.exists(self.ruta):
+            st.error(f"No se encontraron resultados para {self.ruta}")
+            return
+
         sub_folders = [
             carpeta
             for carpeta in os.listdir(self.ruta)
@@ -163,12 +166,10 @@ class ResultsVisualizer:
         self.load_css("styles.css")
 
         G = CityGraphPlotter(QUERIE_PARAMS, query=self.location_name)
-
         if not self.agents:
             st.title(f"No hay resultados para la ciudad de {self.location_name}")
             G.show()
         else:
-            print(self.agents)
             orig_node = self.agents[0].env.start_state
             dest_node = self.agents[0].env.terminal_state
             origin_node_color = [255, 0, 0, 200]
@@ -202,7 +203,7 @@ class ResultsVisualizer:
 
             default_options = {
                 "strategies": ["e-greedy", "UCB1", "exp3"],
-                "alpha_type": ["Constante"],
+                "alpha_type": ["Constante", "Dinámica"],
             }
 
             selected_strategies = st.sidebar.multiselect(
@@ -228,8 +229,9 @@ class ResultsVisualizer:
                     self.agents_const,
                     self.agents_dyna,
                 )
+                print(selected_agents)
 
-                for criteria in ["error", "policy error", "steps", "score"]:
+                for criteria in ["error", "policy error", "steps", "score", "regret", "cumulative regret"]:
                     fig = plot_results_per_episode_comp_plotly(
                         selected_agents, criteria
                     )

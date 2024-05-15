@@ -8,6 +8,7 @@ cache/
 notebooks/
 # results of the tests
 results/
+results2/
 # Build networks
 networks/
 # notebooks

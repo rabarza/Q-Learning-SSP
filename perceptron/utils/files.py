@@ -59,6 +59,8 @@ def get_folders_list(base_dir, folder_name="results"):
     """Obtiene la lista de nombres de carpetas existentes en la carpeta folder_name. Por defecto, folder_name es "results" """
     folder_path = os.path.join(base_dir, folder_name)
     # Listar los archivos en la carpeta networks filtrando por los archivos .pkl
+    if not os.path.exists(folder_path):
+        return []
     folder_list = [
         folder
         for folder in os.listdir(folder_path)

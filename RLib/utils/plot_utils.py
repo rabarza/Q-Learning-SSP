@@ -24,23 +24,16 @@ def get_label(agent):
     """
     label = {}
     # Adding the label by the strategy of the agent
-    if agent.strategy in [
-        "e-greedy",
-        "e-decay",
-        "e-truncated",
-        "UCB1",
-        "exp3",
-        "softmax",
-    ]:
-        label["strategy"] = agent.strategy
-    else:
-        label["strategy"] = agent.strategy
+    label["strategy"] = agent.strategy
+
     # Adding the label by the alpha of the agent
-    if agent.dynamic_alpha:
+    if agent.dynamic_alpha:  # If learning rate depends on time
         label["alpha"] = f"α = {agent.alpha_formula}"
     else:
         label["alpha"] = f"α = {agent.alpha}"
-    return f"{label['strategy']} | {agent.action_selector.get_label()} | {label['alpha']}"
+    return (
+        f"{agent.action_selector.get_label()} | {label['alpha']} | {label['strategy']}"
+    )
 
 
 # ======================= Matplotlib =======================
@@ -176,7 +169,7 @@ def plot_results_per_episode_comp_plotly(
         for idx, model in enumerate(agentes):
             # Ajustar la intensidad del color para cada línea dentro del grupo
             color_actual = ajustar_intensidad_color(
-                color_base, 1 - 0.1 * idx
+                color_base, 1 - 0.05 * idx
             )  # Ajusta los factores de saturación y luminosidad según el índice del agente
 
             episodes = model.num_episodes
@@ -193,14 +186,28 @@ def plot_results_per_episode_comp_plotly(
                 values = model.max_norm_error
             elif criteria == "policy error":
                 values = model.max_norm_error_policy
+            elif criteria == "regret":
+                values = model.regret
+            elif criteria == "cumulative regret":
+                values = model.cumulative_regret
             else:
                 raise ValueError("Invalid comparison criteria")
 
             label = get_label(model) if add_label else None
 
+            if episodes > 600000:
+                values = values[::10000]
+                iterations = list(range(0, episodes, 10000))
+            else:
+                iterations = list(range(episodes))
+
+            # Ajustar la longitud de episodes para que coincida con los valores reducidos de values
+            # episodes = episodes[:len(values)]
+            # print(iterations, len(values))
+
             fig.add_trace(
                 go.Scattergl(
-                    x=list(range(episodes)),
+                    x=iterations,
                     y=values,
                     mode="lines",
                     name=label,
@@ -209,9 +216,10 @@ def plot_results_per_episode_comp_plotly(
             )
 
             if compare_best:
+                values_best = values_best[::10]
                 fig.add_trace(
                     go.Scattergl(
-                        x=list(range(episodes)),
+                        x=episodes,
                         y=values_best,
                         mode="lines",
                         name=label + " (Best)",

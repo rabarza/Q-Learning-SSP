@@ -40,7 +40,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GRAPHS_DIR_NAME = "networks"
 
 
-def get_selected_agents(selected_alpha_type, selected_strategies, agents_const, agents_dyna):
+def get_selected_agents(
+    selected_alpha_type, selected_strategies, agents_const, agents_dyna
+):
     is_constant = "Constante" in selected_alpha_type
     is_dynamic = "Dinámica" in selected_alpha_type
 
@@ -133,6 +135,7 @@ class ResultsVisualizer:
 
         # Ruta donde se encuentran los resultados
         ruta_resultados = os.path.join(BASE_DIR, "results", file_name.split(".")[0])
+        
         agents_path = ruta_resultados
         print(f"\nRuta de los agentes: {agents_path}\n")
         ruta_carpeta_const = os.path.join(agents_path, "constant_alpha/")
@@ -179,7 +182,7 @@ class ResultsVisualizer:
         # Forzar actualización de la página
         default_options = {
             "strategies": ["e-greedy", "UCB1", "exp3"],
-            "alpha_type": ["Constante"],
+            "alpha_type": ["Constante", "Dinámica"],
         }
 
         selected_strategies = st.sidebar.multiselect(
@@ -210,7 +213,14 @@ class ResultsVisualizer:
             if not selected_agents:
                 return
 
-            for criteria in ["error", "policy error", "steps", "score"]:
+            for criteria in [
+                "error",
+                "policy error",
+                "steps",
+                "score",
+                "regret",
+                "cumulative regret",
+            ]:
                 fig = plot_results_per_episode_comp_plotly(selected_agents, criteria)
                 st.write(fig)
             # Mostrar los resultados del agente seleccionado
@@ -422,7 +432,7 @@ class PerceptronApp:
 
             selected_strategy = st.selectbox(
                 "Selecciona Estrategia",
-                ["e-greedy", "UCB1", "exp3 β constante", "exp3 β dinámico"],
+                ["e-greedy", "UCB1", "exp3 η constante", "exp3 η dinámico"],
             )
 
             alpha_type = st.selectbox(
@@ -462,7 +472,7 @@ class PerceptronApp:
                             "1/N(s,a)",
                             "max(0.01, 1/N(s,a))",
                             "1/sqrt(N(s,a))",
-                            "1/log(N(s,a))",
+                            "1 / log(N(s,a) + 1)",
                         ],
                     )
                 # Selección de factor de descuento γ
@@ -523,10 +533,13 @@ class PerceptronApp:
                         results_dir = os.path.join(BASE_DIR, temp_path)
                         # Si no existe la carpeta, crearla
                         if not os.path.exists(results_dir):
-                            os.makedirs(results_dir)                
-                
-                alpha_type_dict = {"constante": "constant_alpha", "dinámico": "dynamic_alpha"}
-                alpha_type_dir = alpha_type_dict[st.session_state.alpha_type]   
+                            os.makedirs(results_dir)
+
+                alpha_type_dict = {
+                    "constante": "constant_alpha",
+                    "dinámico": "dynamic_alpha",
+                }
+                alpha_type_dir = alpha_type_dict[st.session_state.alpha_type]
                 # Ruta para guardar resultados
                 agent_storage_path = os.path.join(
                     BASE_DIR,
