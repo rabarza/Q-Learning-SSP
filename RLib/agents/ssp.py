@@ -206,7 +206,7 @@ class QAgentSSP(QAgent):
         # max norm error
         self.max_norm_error = np.zeros(num_episodes)
         # max_norm_error for a policy
-        self.max_norm_error_policy = np.zeros(num_episodes)
+        self.max_norm_error_shortest_path = np.zeros(num_episodes)
 
         q_table_aux = copy.deepcopy(self.q_table)  # Cambios temporales
         # tasa de descuento
@@ -266,29 +266,29 @@ class QAgentSSP(QAgent):
                 self.avg_scores_best[episode] = score_aux / max(
                     self.steps_best[episode], 1
                 )
-                max_norm_error_policy = max_norm(
+                max_norm_error_shortest_path = max_norm(
                     self.q_table, q_table_aux, path=shortest_path
                 )
             elif shortest_path:
                 max_norm_error = max_norm(self.q_table, q_star)
-                max_norm_error_policy = max_norm(
+                max_norm_error_shortest_path = max_norm(
                     self.q_table, q_star, path=shortest_path
                 )
             else:
                 max_norm_error = max_norm(self.q_table, q_star)
-                max_norm_error_policy = 0
+                max_norm_error_shortest_path = 0
 
             # Almacenar el error de la norma máxima
             self.max_norm_error[episode] = max_norm_error
-            self.max_norm_error_policy[episode] = max_norm_error_policy
+            self.max_norm_error_shortest_path[episode] = max_norm_error_shortest_path
             # Almacenar cantidad promedio de valores q y del episodio
             self.scores[episode] = total_score
             self.avg_scores[episode] = total_score / max(self.steps[episode], 1)
             # Calcular el regret
-            self.regret[episode] = episode * optimal_cost - np.sum(self.scores[:episode])
+            self.regret[episode] = np.sum(self.scores[:episode]) - episode * optimal_cost 
 
             # Mostrar información de la ejecución
-            message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error policy: {max_norm_error_policy:.3f}"
+            message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error policy: {max_norm_error_shortest_path:.3f}"
             stqdm.write(message)
 
     def best_path(self, state):

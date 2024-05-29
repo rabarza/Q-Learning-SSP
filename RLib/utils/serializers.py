@@ -73,6 +73,9 @@ class QAgentSSPSerializer:
             "error_q_table": error_q_table,
             "shortest_path": shortest_path,
             "optimal_policy": optimal_policy,
+            "max_norm_error": getattr(self.q_agent, "max_norm_error", None),
+            "max_norm_error_shortest_path": getattr(self.q_agent, "max_norm_error_shortest_path", None),
+            "regret": getattr(self.q_agent, "regret", None),
         }
 
 

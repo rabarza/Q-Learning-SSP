@@ -187,7 +187,7 @@ def plot_results_per_episode_comp_plotly(
                 values = model.max_norm_error
             elif criteria == "policy error":
                 criteria_name = "Shortest Path Error"
-                values = model.max_norm_error_policy
+                values = model.max_norm_error_shortest_path
             elif criteria == "regret":
                 values = model.regret
             else:
