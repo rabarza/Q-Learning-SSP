@@ -196,9 +196,6 @@ class QAgentSSP(QAgent):
         self.regret = np.zeros(num_episodes)
         self.cumulative_regret = np.zeros(num_episodes)
 
-        # Obtener el costo óptimo para calcular el regret
-        optimal_cost = max_q_table(q_star, self.env.start_state)
-
         self.q_star = q_star
 
         # best
@@ -214,6 +211,10 @@ class QAgentSSP(QAgent):
         q_table_aux = copy.deepcopy(self.q_table)  # Cambios temporales
         # tasa de descuento
         gamma = self.gamma
+        # Estado inicial
+        initial_state = self.env.start_state
+        # Obtener el costo óptimo para calcular el regret
+        optimal_cost = max_q_table(q_star, initial_state)
 
         for episode in stqdm(
             range(num_episodes), desc="Completado", ncols=100, leave=True
@@ -222,7 +223,7 @@ class QAgentSSP(QAgent):
             self.actual_episode = episode
             total_score = 0
 
-            state = self.env.start_state
+            state = initial_state
             while not done:
                 # Se realiza la transición (action, next_state, reward)
                 action = self.select_action(state)
@@ -285,7 +286,6 @@ class QAgentSSP(QAgent):
             self.avg_scores[episode] = total_score / max(self.steps[episode], 1)
             # Calcular el regret
             self.regret[episode] = episode * optimal_cost - np.sum(self.scores[:episode])
-            self.cumulative_regret[episode] = np.sum(self.regret)
 
             # Mostrar información de la ejecución
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error policy: {max_norm_error_policy:.3f}"

@@ -41,7 +41,7 @@ def max_norm(q_table1, q_table2, path=None):
 
 def argmax_q_table(q_table, state):
         ''' 
-        Retorna la acción con mayor valor Q(s,a) para un estado s
+        Retorna la acción con mayor valor Q(s,a) para un estado s: argmax_a Q(s,a)
         '''
         argmax_action = max(q_table[state], key=q_table[state].get) 
         return argmax_action
@@ -49,7 +49,7 @@ def argmax_q_table(q_table, state):
     
 def max_q_table(q_table, state):
     ''' 
-    Retorna el valor máximo Q(s,a) para un estado s
+    Retorna el valor máximo Q(s,a) para un estado s: max_a Q(s,a)
     '''
     if state in q_table and q_table[state]:
         return max(list(q_table[state].values()))

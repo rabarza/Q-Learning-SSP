@@ -173,6 +173,7 @@ def plot_results_per_episode_comp_plotly(
             )  # Ajusta los factores de saturación y luminosidad según el índice del agente
 
             episodes = model.num_episodes
+            criteria_name = criteria.capitalize()
             if criteria == "steps":
                 values = model.steps
                 values_best = model.steps_best
@@ -185,11 +186,10 @@ def plot_results_per_episode_comp_plotly(
             elif criteria == "error":
                 values = model.max_norm_error
             elif criteria == "policy error":
+                criteria_name = "Shortest Path Error"
                 values = model.max_norm_error_policy
             elif criteria == "regret":
                 values = model.regret
-            elif criteria == "cumulative regret":
-                values = model.cumulative_regret
             else:
                 raise ValueError("Invalid comparison criteria")
 
@@ -229,7 +229,7 @@ def plot_results_per_episode_comp_plotly(
 
     fig.update_layout(
         xaxis_title="Episodios",
-        yaxis_title=criteria,
+        yaxis_title=criteria_name,
         title=dict(text="Comparación de Resultados por Episodio"),
     )
 

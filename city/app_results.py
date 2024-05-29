@@ -231,7 +231,14 @@ class ResultsVisualizer:
                 )
                 print(selected_agents)
 
-                for criteria in ["error", "policy error", "steps", "score", "regret", "cumulative regret"]:
+                for criteria in [
+                    "error",
+                    "policy error",
+                    "steps",
+                    "score",
+                    "regret",
+                    # "cumulative regret",
+                ]:
                     fig = plot_results_per_episode_comp_plotly(
                         selected_agents, criteria
                     )

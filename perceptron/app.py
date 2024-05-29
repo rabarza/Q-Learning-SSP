@@ -219,7 +219,7 @@ class ResultsVisualizer:
                 "steps",
                 "score",
                 "regret",
-                "cumulative regret",
+                # "cumulative regret",
             ]:
                 fig = plot_results_per_episode_comp_plotly(selected_agents, criteria)
                 st.write(fig)
