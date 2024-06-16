@@ -6,6 +6,9 @@ class LogNormalDistribution:
     def __init__(self, n_mean, n_std=0.25):
         self.mean = n_mean
         self.std = n_std
+    def set_parameters(self, n_mean, n_std):
+        self.mean = n_mean
+        self.std = n_std
     def get_sample(self):
         sample = np.random.lognormal(self.mean, self.std)
         return sample
