@@ -52,7 +52,9 @@ class QAgentSSPSerializer:
         self.q_agent = q_agent
 
     def to_dict(self):
-        error_q_table = serialize_table(resta_diccionarios(self.q_agent.q_star, self.q_agent.q_table))
+        error_q_table = serialize_table(
+            resta_diccionarios(self.q_agent.q_star, self.q_agent.q_table)
+        )
         shortest_path = list(
             map(lambda x: str(x), getattr(self.q_agent, "shortest_path", None))
         )
@@ -73,9 +75,11 @@ class QAgentSSPSerializer:
             "error_q_table": error_q_table,
             "shortest_path": shortest_path,
             "optimal_policy": optimal_policy,
-            "max_norm_error": getattr(self.q_agent, "max_norm_error", None),
-            "max_norm_error_shortest_path": getattr(self.q_agent, "max_norm_error_shortest_path", None),
-            "regret": getattr(self.q_agent, "regret", None),
+            "max_norm_error": list(getattr(self.q_agent, "max_norm_error", [])),
+            "max_norm_error_shortest_path": list(
+                getattr(self.q_agent, "max_norm_error_shortest_path", [])
+            ),
+            "regret": list(getattr(self.q_agent, "regret", [])),
         }
 
 

@@ -76,7 +76,7 @@ class QAgent:
         formula = self.alpha_formula.replace("N(s,a)", "t")
         # Evaluar la fórmula de alpha dinámico con el valor de t
         alpha_value = eval(formula)
-        # print(f"alpha_value: {alpha_value}, state: {state}, action: {action}, t: {t}")
+        print(f"alpha_value: {alpha_value}, state: {state}, action: {action}, t: {t}")
         return alpha_value
 
     def select_action(self, state):
@@ -228,7 +228,6 @@ class QAgentSSP(QAgent):
                 # Se realiza la transición (action, next_state, reward)
                 action = self.select_action(state)
                 alpha = self.get_alpha(state, action)
-
                 next_state, reward, done, info = self.env.take_action(
                     state, action, distribution
                 )
@@ -238,6 +237,7 @@ class QAgentSSP(QAgent):
                 q_new = q_old * (1 - alpha) + alpha * (
                     reward + gamma * self.max_q_table(next_state)
                 )
+                print(f"q_old: {q_old}, q_new: {q_new}, alpha: {alpha}, reward: {reward}, visits: {self.times_actions[state][action]}")
                 # Almacenar el nuevo valor de Q(s,a)
                 self.q_table[state][action] = q_new
                 # Incrementar cantidad de visitas al estado
@@ -246,36 +246,24 @@ class QAgentSSP(QAgent):
                 state = next_state
                 # Aumentar la cantidad de pasos del episodio
                 self.steps[episode] += 1
+                if self.steps[episode] > 1000:
+                    break
                 # Acumular el puntaje obtenido en el episodio
                 total_score += reward
                 # Imprimir información de la ejecución
                 print(info) if verbose else None
 
             # Calcular el error de la norma máxima entre la tabla Q y la tabla Q*
-            if not q_star:
-                q_table_aux, score_aux, steps_aux = exploitation(
-                    self.q_table,
-                    self.steps[episode],
-                    self.env,
-                    tolerance=2,
-                    alpha=alpha,
-                    gamma=gamma,
-                )
-                self.steps_best[episode] = steps_aux
-                self.scores_best[episode] = score_aux
-                self.avg_scores_best[episode] = score_aux / max(
-                    self.steps_best[episode], 1
-                )
-                max_norm_error_shortest_path = max_norm(
-                    self.q_table, q_table_aux, path=shortest_path
-                )
-            elif shortest_path:
+            if q_star and shortest_path:
                 max_norm_error = max_norm(self.q_table, q_star)
                 max_norm_error_shortest_path = max_norm(
                     self.q_table, q_star, path=shortest_path
                 )
-            else:
+            elif q_star:
                 max_norm_error = max_norm(self.q_table, q_star)
+                max_norm_error_shortest_path = 0
+            else:
+                max_norm_error = 0
                 max_norm_error_shortest_path = 0
 
             # Almacenar el error de la norma máxima
@@ -285,7 +273,7 @@ class QAgentSSP(QAgent):
             self.scores[episode] = total_score
             self.avg_scores[episode] = total_score / max(self.steps[episode], 1)
             # Calcular el regret
-            self.regret[episode] = np.sum(self.scores[:episode]) - episode * optimal_cost 
+            self.regret[episode] = optimal_cost - np.sum(self.scores[:episode+1])/max(episode, 1)
 
             # Mostrar información de la ejecución
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error policy: {max_norm_error_shortest_path:.3f}"

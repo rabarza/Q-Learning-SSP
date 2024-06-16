@@ -238,8 +238,8 @@ class ResultsVisualizer:
 class PerceptronApp:
     def __init__(self):
         self.capas = ["Entrada", "Salida"]
-        self.nodos_por_capa = [1, 1]
-        self.numero_capas_ocultas = 1
+        self.nodos_por_capa = [1, 1] # Inicialmente solo hay un nodo en la capa de entrada y otro en la de salida
+        self.numero_capas_ocultas = 1 # Número de capas ocultas inicial
         self.posiciones = {}
         self.fig = None
 
@@ -306,7 +306,7 @@ class PerceptronApp:
                     key=f"Nodos_x_capa_{key_suffix}",
                 ),
             )
-
+        # Vuelve a crear la figura del grafo con las capas y nodos actualizados
         grafo_perceptron = self.crear_grafo_perceptron()
         fig = plot_perceptron_graph(grafo_perceptron)
         # fig = plot_perceptron_graph(grafo_perceptron)
@@ -370,6 +370,11 @@ class PerceptronApp:
                 # Almacenar el grafo en el estado de la sesión
                 st.session_state.graph_name = file_name
                 st.session_state.graph = G
+                
+                # Exportar a TikZ
+                if st.button("Exportar a TikZ"):
+                    tikz_code = self.exportar_a_tikz(graph=G)
+                    st.code(tikz_code)
         except Exception as e:
             st.error(
                 f"No hay grafos guardados en la carpeta {GRAPHS_DIR_NAME}. Crea un grafo nuevo para poder entrenar agentes."
@@ -389,6 +394,7 @@ class PerceptronApp:
         # Seleccionar un grafo guardado
         self.load_graph_helper()
         G = st.session_state.graph
+        print(G.edges)
         file_name = st.session_state.graph_name
 
         # Definir nodos de origen y destino
@@ -560,6 +566,36 @@ class PerceptronApp:
             st.success("Resultados guardados!")
             time.sleep(2)
             st.experimental_rerun()
+    @staticmethod            
+    def exportar_a_tikz(graph):
+        tikz_code = "\\begin{tikzpicture}[scale=2, transform shape, every node/.style={minimum size=0.7cm, draw, circle}]\n"
+        posiciones = nx.get_node_attributes(graph, "pos")
+        # Añadir nodos al código TikZ
+        for (capa, j), pos in posiciones.items():
+            x, y = pos
+            if capa == "Entrada":
+                tikz_code += f"\\node[draw, circle, fill=blue!20] ({capa}{j}) at ({x}, {y}) {{E}};\n"
+            elif capa == "Salida":
+                tikz_code += f"\\node[draw, circle, fill=red!20] ({capa}{j}) at ({x}, {y}) {{S}};\n"
+            else:
+                tikz_code += f"\\node[draw, circle, fill=green!20] ({capa}{j}) at ({x}, {y}) {{}};\n"
+        
+        # Añadir aristas al código TikZ
+        print(graph.edges)
+        for edge in graph.edges:
+            nodo_origen, nodo_destino = edge
+            if nodo_origen != nodo_destino:
+                tikz_code += f"\\draw[->] ({nodo_origen[0]}{nodo_origen[1]}) -- ({nodo_destino[0]}{nodo_destino[1]});\n"
+        # add recurrent edge to the last node (curve arrow to itself)
+        last_node = list(graph.nodes)[-1]
+        tikz_code += f"\\draw[->] ({last_node[0]}{last_node[1]}) to [out=30,in=330,looseness=5] ({last_node[0]}{last_node[1]});\n"
+        
+        
+        tikz_code += "\\end{tikzpicture}\n"
+        
+        return tikz_code
+        
+        return tikz_code
 
 
 if __name__ == "__main__":

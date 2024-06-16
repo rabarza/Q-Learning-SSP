@@ -38,7 +38,7 @@ def plot_perceptron_graph(grafo_perceptron):  #
         node_x.append(x)
         node_y.append(y)
         node_text.append(
-            f"Capa: {node[0]}<br>Nodo: {node[1]}<br># de salidas: {str(len(adjacencies[1]))}"
+            f"Capa: {node[0]}<br>Nodo: {node[1]}<br># de salidas: {str(len(adjacencies[1]))} Posición: {posiciones[node]}<br>"
         )
         node_adjacencies.append(len(adjacencies[1]))
 
