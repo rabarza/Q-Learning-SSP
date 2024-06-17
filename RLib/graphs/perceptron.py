@@ -63,6 +63,17 @@ def create_perceptron_graph(layers=["Entrada", "Salida"],
 
 
 def plot_network_graph(graph, use_annotations=True):
+    """
+    Función para visualizar cualquier grafo dirigido con nodos y arcos, donde los arcos tienen una longitud `length`.
+    
+    Parámetros
+    ----------
+    graph : nx.DiGraph
+        Grafo dirigido que representa el perceptrón multicapa.
+    use_annotations : bool
+        Indica si se deben mostrar las etiquetas de los arcos.
+    """
+    
     # Crear un objeto figura
     fig = go.Figure()
     
