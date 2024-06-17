@@ -62,7 +62,7 @@ def create_perceptron_graph(layers=["Entrada", "Salida"],
     return perceptron_graph
 
 
-def plot_network_graph(graph, use_annotations=True):
+def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
     """
     Función para visualizar cualquier grafo dirigido con nodos y arcos, donde los arcos tienen una longitud `length`.
     
@@ -103,8 +103,8 @@ def plot_network_graph(graph, use_annotations=True):
         
         if use_annotations:
             # Calcular el primer trozo (15%) del segmento para la anotación
-            annot_x = x0 + (x1 - x0) * 0.15
-            annot_y = y0 + (y1 - y0) * 0.15
+            annot_x = x0 + (x1 - x0) * label_pos
+            annot_y = y0 + (y1 - y0) * label_pos
             annotations.append(
                 dict(
                     x=annot_x,
