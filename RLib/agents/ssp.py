@@ -240,7 +240,7 @@ class QAgentSSP(QAgent):
                 q_new = q_old * (1 - alpha) + alpha * (
                     reward + gamma * self.max_q_table(next_state)
                 )
-                print(f"q_old: {q_old}, q_new: {q_new}, alpha: {alpha}, reward: {reward}, visits: {self.times_actions[state][action]}")
+                # print(f"q_old: {q_old}, q_new: {q_new}, alpha: {alpha}, reward: {reward}, visits: {self.times_actions[state][action]}")
                 # Almacenar el nuevo valor de Q(s,a)
                 self.q_table[state][action] = q_new
                 # Incrementar cantidad de visitas al estado
@@ -282,7 +282,7 @@ class QAgentSSP(QAgent):
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error path: {max_norm_error_shortest_path:.3f}\n"
             stqdm.write(message)
 
-    def best_path(self, state):
+    def best_path(self, state=None):
         """Devuelve el mejor camino desde un estado inicial hasta el estado terminal
 
         Parameters
@@ -290,6 +290,8 @@ class QAgentSSP(QAgent):
         state: int
             estado inicial desde el cual se quiere encontrar el mejor camino hasta el estado terminal
         """
+        if not state:
+            state = self.env.start_state
         path = []
         if self.env.terminal_state == state:
             return path

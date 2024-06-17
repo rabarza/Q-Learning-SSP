@@ -158,6 +158,25 @@ def ajustar_intensidad_color(color, intensity_factor):
 def plot_results_per_episode_comp_plotly(
     lista, criteria="avg score", add_label=True, compare_best=False
 ):
+    '''Genera un gráfico de comparación de resultados por episodio utilizando Plotly.
+    
+    Parameters
+    ----------
+    lista : list
+        Lista de agentes QLearningAgent.
+    criteria : str
+        Criterio de comparación entre los agentes. Puede ser 'steps', 'score', 'avg score', 'error', 'policy error' o 'regret'.
+    add_label : bool
+        Indica si se añade una etiqueta a cada línea del gráfico.
+    compare_best : bool
+        Indica si se compara con los mejores resultados obtenidos por cada agente.
+        
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        Gráfico de comparación de resultados por episodio.
+    '''
+    
     fig = go.Figure()
 
     for estrategia, agentes in group_by_keyword(lista, "strategy"):

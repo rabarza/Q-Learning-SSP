@@ -580,8 +580,6 @@ class PerceptronApp:
             else:
                 tikz_code += f"\\node[draw, circle, fill=green!20] ({capa}{j}) at ({x}, {y}) {{}};\n"
         
-        # Añadir aristas al código TikZ
-        print(graph.edges)
         for edge in graph.edges:
             nodo_origen, nodo_destino = edge
             if nodo_origen != nodo_destino:
@@ -592,8 +590,6 @@ class PerceptronApp:
         
         
         tikz_code += "\\end{tikzpicture}\n"
-        
-        return tikz_code
         
         return tikz_code
 
