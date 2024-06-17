@@ -2,14 +2,15 @@ import plotly.graph_objects as go
 import networkx as nx
 import random
 
+
 def create_perceptron_graph(layers=["Entrada", "Salida"],
-                           nodes_by_layer=[1, 1],
-                           min_length=1, 
-                           max_length=20,
-                           ):
+                            nodes_by_layer=[1, 1],
+                            min_length=1,
+                            max_length=20,
+                            ):
     """ 
     Crea un grafo dirigido que representa un perceptrón multicapa.
-    
+
     Parámetros
     ----------
     layers : list of str
@@ -20,16 +21,16 @@ def create_perceptron_graph(layers=["Entrada", "Salida"],
         Longitud mínima de los arcos que conectan los nodos.
     max_length : int
         Longitud máxima de los arcos que conectan los nodos.
-        
+
     Retorna
     -------
     perceptron_graph : nx.DiGraph
         Grafo dirigido que representa el perceptrón multicapa.
     """
     if type(layers) != list or type(nodes_by_layer) != list:
-        raise TypeError("Los parámetros layers y nodes_by_layer deben ser listas.")
+        raise TypeError(
+            "Los parámetros layers y nodes_by_layer deben ser listas.")
 
-    
     # Crear un grafo dirigido para representar el perceptrón
     perceptron_graph = nx.DiGraph()
 
@@ -42,30 +43,30 @@ def create_perceptron_graph(layers=["Entrada", "Salida"],
     for i, capa in enumerate(layers):
         for j in range(nodes_by_layer[i]):
             posiciones[(capa, j)] = (i * x_step,
-                                    j * y_step - (nodes_by_layer[i] - 1) / 2)
+                                     j * y_step - (nodes_by_layer[i] - 1) / 2)
             # Agregar nodos al grafo con las posiciones definidas.
             # Las posiciones se almacenan en la llave "pos" de cada nodo.
             perceptron_graph.add_node((capa, j), pos=posiciones[(capa, j)])
 
-    # Conectar los nodos de acuerdo a la estructura del perceptrón. 
+    # Conectar los nodos de acuerdo a la estructura del perceptrón.
     # Los nodos de la capa i se conectan con los nodos de la capa i+1
     for i in range(len(layers) - 1):
         for j in range(nodes_by_layer[i]):
             for k in range(nodes_by_layer[i + 1]):
                 random_length = random.randint(min_length, max_length)
                 perceptron_graph.add_edge(
-                    (layers[i], j), # Nodo de origen (capa i, nodo j)
-                    (layers[i + 1], k), # Nodo de destino
-                    length=random_length, # Longitud del arco
+                    (layers[i], j),  # Nodo de origen (capa i, nodo j)
+                    (layers[i + 1], k),  # Nodo de destino
+                    length=random_length,  # Longitud del arco
                 )
-    
+
     return perceptron_graph
 
 
 def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
     """
     Función para visualizar cualquier grafo dirigido con nodos y arcos, donde los arcos tienen una longitud `length`.
-    
+
     Parámetros
     ----------
     graph : nx.DiGraph
@@ -73,10 +74,10 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
     use_annotations : bool
         Indica si se deben mostrar las etiquetas de los arcos.
     """
-    
+
     # Crear un objeto figura
     fig = go.Figure()
-    
+
     # Se agregan los arcos y luego los nodos a la figura.
     # De esta forma, los nodos se dibujan sobre los arcos.
     edge_x = []
@@ -88,6 +89,9 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
     segment_count = 10  # Número de segmentos en los que se divide cada arco
 
     for edge in graph.edges:
+        # Omitir arcos recurrentes
+        if edge[0] == edge[1]:
+            continue
         x0, y0 = graph.nodes[edge[0]]['pos']  # Posición del nodo de origen
         x1, y1 = graph.nodes[edge[1]]['pos']  # Posición del nodo de destino
         edge_x.append(x0)
@@ -99,8 +103,9 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
         edge_y.append(None)
 
         # Añadir longitud del arco al texto del arco
-        length = graph.edges[edge].get('length', 0)  # Obtener la longitud del arco
-        
+        # Obtener la longitud del arco
+        length = graph.edges[edge].get('length', 0)
+
         if use_annotations:
             # Calcular el primer trozo (15%) del segmento para la anotación
             annot_x = x0 + (x1 - x0) * label_pos
@@ -142,7 +147,8 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
             hoverinfo='text',
             marker=dict(
                 size=10,
-                color='rgba(255, 255, 255, 0)',  # Hacer los puntos transparentes
+                # Hacer los puntos transparentes
+                color='rgba(255, 255, 255, 0)',
                 line=dict(width=0)
             ),
             text=hover_text  # Añadir el texto de las etiquetas de los arcos
@@ -163,10 +169,10 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
         hoverinfo='text',
         marker=dict(
             showscale=True,
-            colorscale='Viridis', # colorscale options
-            #'Greys' | 'YlGnBu' | 'Greens' | 'YlOrRd' | 'Bluered' | 'RdBu' |
-            #'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
-            #'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
+            colorscale='Viridis',  # colorscale options
+            # 'Greys' | 'YlGnBu' | 'Greens' | 'YlOrRd' | 'Bluered' | 'RdBu' |
+            # 'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
+            # 'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
             reversescale=True,
             color=[],
             size=30,
@@ -186,12 +192,14 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
     for node in graph.nodes:
         adjacencies = list(graph.neighbors(node))
         node_adjacencies.append(len(adjacencies))
-        node_text.append(f'Node: {node}<br># of connections: {str(len(adjacencies))}')
+        node_text.append(
+            f'Node: {node}<br># of connections: {str(len(adjacencies))}')
     node_trace.marker.color = node_adjacencies
     node_trace.text = node_text
 
     # Crear figura
-    fig_data = [edge_trace, node_trace] + ([hover_trace] if not use_annotations else [])
+    fig_data = [edge_trace, node_trace] + \
+        ([hover_trace] if not use_annotations else [])
     fig = go.Figure(data=fig_data,
                     layout=go.Layout(
                         title='Perceptron graph<br>',
@@ -199,8 +207,10 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
                         showlegend=False,
                         hovermode='closest',
                         margin=dict(b=20, l=5, r=5, t=40),
-                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        xaxis=dict(showgrid=False, zeroline=False,
+                                   showticklabels=False),
+                        yaxis=dict(showgrid=False, zeroline=False,
+                                   showticklabels=False),
                         annotations=annotations if use_annotations else []
                     ))
 
