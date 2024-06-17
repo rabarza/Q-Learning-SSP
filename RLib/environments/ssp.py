@@ -13,6 +13,8 @@ from RLib.distributions.distributions import (
 ##############################################################################################################
 # Stochastic Shortest Path
 ##############################################################################################################
+
+
 def get_edge_attribute(G, orig, dest, weight="length"):
     edge_data = G.get_edge_data(orig, dest)
     if weight in edge_data:
@@ -27,7 +29,8 @@ def get_edge_attribute(G, orig, dest, weight="length"):
 
 
 def get_edge_length(G, orig, dest):
-    assert G.has_edge(orig, dest), f"No hay arco entre los nodos {orig} y {dest}."
+    assert G.has_edge(
+        orig, dest), f"No hay arco entre los nodos {orig} y {dest}."
     return get_edge_attribute(G, orig, dest, "length")
 
 
@@ -70,12 +73,13 @@ def get_edge_cost(
         # generate a sample of the speed and calculate the time given the edge length
         time = random_time(edge_length, edge_speed)
     else:
-        raise ValueError(f"La distribución {distribution_name} no está implementada.")
+        raise ValueError(
+            f"La distribución {distribution_name} no está implementada.")
     stochastic_cost = time
     return stochastic_cost
 
 
-def get_cumulative_edges_cost(grafo, policy, node, dest_node):
+def get_cumulative_edges_cost(graph, policy, node, dest_node):
     """
     Retorna el costo acumulado de comenzar en el nodo 'node' y llegar al nodo 'dest_node' siguiendo la política 'policy'
     """
@@ -87,7 +91,7 @@ def get_cumulative_edges_cost(grafo, policy, node, dest_node):
     # Calcular el costo acumulado del camino más corto
     cost = 0
     for index in range(len(path) - 1):
-        cost += get_edge_cost(grafo, path[index], path[index + 1])
+        cost += get_edge_cost(graph, path[index], path[index + 1])
     return cost
 
 
@@ -96,36 +100,37 @@ class SSPEnv:
     Entorno de aprendizaje para el problema de encontrar el camino más corto en un grafo
     """
 
-    def __init__(self, grafo, start_state, terminal_state):
+    def __init__(self, graph, start_state, terminal_state):
         """Constructor de la clase SSPEnv
-        
+
         Parámetros:
         ----------
-        grafo (nx.Graph): Grafo con el que se va a trabajar
+        graph (nx.Graph): Grafo con el que se va a trabajar
         start_state (int): Estado inicial
         terminal_state (int): Estado terminal
         """
 
-        assert grafo is not None, "El grafo no puede ser None"
-        self.grafo = grafo
-        self.num_nodos = grafo.number_of_nodes()
+        assert graph is not None, "El graph no puede ser None"
+        self.graph = graph
+        self.num_nodos = graph.number_of_nodes()
         assert start_state is not None, "El estado inicial no puede ser None"
         self.__start_state = start_state
         self.__current_state = self.__start_state
         assert terminal_state is not None, "El estado terminal no puede ser None"
         self.__terminal_state = terminal_state
-        self.__num_states = grafo.number_of_nodes()
+        self.__num_states = graph.number_of_nodes()
         self.__num_actions = {
             k: v
             for k, v in map(
-                lambda item: (item[0], len(item[1])), nx.to_dict_of_lists(grafo).items()
+                lambda item: (item[0], len(item[1])
+                              ), nx.to_dict_of_lists(graph).items()
             )
         }  # Diccionario con el número de acciones por estado
-        self.__adjacency_dict_of_lists = nx.to_dict_of_lists(self.grafo)
+        self.__adjacency_dict_of_lists = nx.to_dict_of_lists(self.graph)
         self.__q_table = self.dict_states_actions_zeros()
 
     def __str__(self):
-        return f"EnvShortestPath {self.grafo}"
+        return f"EnvShortestPath {self.graph}"
 
     @property
     def num_states(self):
@@ -149,11 +154,11 @@ class SSPEnv:
 
     def dict_states_zeros(self):
         """Retorna un diccionario con los estados con valor 0. Es útil para inicializar la tabla del número de visitas a cada estado, por ejemplo. Tiene la forma {estado: 0, ..., estado: 0}"""
-        return {state: 0 for state, actions in nx.to_dict_of_lists(self.grafo).items()}
+        return {state: 0 for state, actions in nx.to_dict_of_lists(self.graph).items()}
 
     def dict_states_actions_zeros(self):
         """Retorna un diccionario con los estados y acciones con valor 0. Es útil para inicializar la tabla Q, o la tabla de la cantidad de veces que se ha visitado cada par estado-acción. Tiene la forma {estado: {accion: 0, ..., accion: 0}, ..., estado: {accion: 0, ..., accion: 0}}"""
-        G = self.grafo
+        G = self.graph
         return {
             state: {action: 0 for action in actions}
             for state, actions in nx.to_dict_of_lists(G).items()
@@ -161,7 +166,7 @@ class SSPEnv:
 
     def dict_states_actions_random(self):
         """Retorna un diccionario con los estados y acciones con valor aleatorio. Es útil para inicializar la tabla Q, o la tabla de la cantidad de veces que se ha visitado cada par estado-acción. Tiene la forma {estado: {accion: valor_aleatorio, ..., accion: valor_aleatorio}, ..., estado: {accion: valor_aleatorio, ..., accion: valor_aleatorio}}"""
-        G = self.grafo
+        G = self.graph
         return {
             state: {action: np.random.random() for action in actions}
             for state, actions in nx.to_dict_of_lists(G).items()
@@ -183,7 +188,7 @@ class SSPEnv:
         """
         assert (
             state in self.__adjacency_dict_of_lists.keys()
-        ), f"El estado {state} no está en el grafo"
+        ), f"El estado {state} no está en el graph"
         return state == self.terminal_state
 
     def take_action(self, state, action, distribution="expectation-lognormal"):
@@ -197,11 +202,11 @@ class SSPEnv:
             terminated (bool): Indica si el episodio terminó
         """
         # Obtener los arcos del nodo actual (estado actual)
-        assert self.grafo.has_edge(
+        assert self.graph.has_edge(
             state, action
         ), f"La acción {action} no está en los arcos del nodo {state}"
         next_state = action
-        cost = get_edge_cost(self.grafo, state, next_state, distribution)
+        cost = get_edge_cost(self.graph, state, next_state, distribution)
         terminated = self.check_state(next_state)
         reward = -cost
         self.__current_state = next_state
