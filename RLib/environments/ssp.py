@@ -2,6 +2,7 @@ import random
 import numpy as np
 import networkx as nx
 import osmnx as ox
+import copy
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from RLib.distributions.distributions import (
@@ -98,17 +99,22 @@ class SSPEnv:
     """
 
     def __init__(self, graph, start_state, terminal_state):
-        """Constructor de la clase SSPEnv
+        """Constructor de la clase SSPEnv. Inicializa el entorno de aprendizaje con el grafo, el estado inicial y el estado terminal. Notar que al nodo terminal se le agrega un arco recurrente con longitud 0.
 
         Parámetros:
         ----------
-        graph (nx.Graph): Grafo con el que se va a trabajar
+        graph (nx.Graph): Grafo con el que se va a trabajar. 
         start_state (int): Estado inicial
         terminal_state (int): Estado terminal
         """
 
         assert graph is not None, "El graph no puede ser None"
-        self.graph = graph
+        self.graph = copy.deepcopy(graph)
+        # Añadir un arco de largo 0 en el nodo terminal
+        if not self.graph.has_edge(terminal_state, terminal_state):
+            self.graph.add_edge(terminal_state, terminal_state, length=0)
+        else:
+            self.graph[terminal_state][terminal_state]["length"] = 0
         self.num_nodos = graph.number_of_nodes()
         assert start_state is not None, "El estado inicial no puede ser None"
         self.__start_state = start_state
