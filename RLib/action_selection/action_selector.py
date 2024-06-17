@@ -136,7 +136,7 @@ class Exp3ActionSelector(ActionSelector):
         Exp3 action selector tiene un parámetro beta que puede ser constante o dinámico. En el caso de ser constante se debe ingresar un valor de beta, en el caso de ser dinámico se debe ingresar una fórmula para calcular beta en función del tiempo y el número de episodios.
 
         Ejemplos: (t: instante de tiempo, T: número de episodios)
-            - beta = 0.1
+            - beta = 0.1 (o cualquier valor de beta constante de tipo float)
             - beta = 't / T'
             - beta = 'log(t)'
             - beta = 'sqrt(t)'

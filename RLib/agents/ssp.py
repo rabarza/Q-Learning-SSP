@@ -170,14 +170,18 @@ class QAgentSSP(QAgent):
         ----------
         num_episodes : int
             Número de episodios a ejecutar. The default is 100.
+            
         distribution : str, optional
             Distribución de probabilidad que se utiliza para generar los valores de recompensa. Puede ser:
                 - 'expectation-lognormal': distribución lognormal con media igual a la recompensa esperada.
                 - 'lognormal': distribución lognormal con media igual a 1.
+                
         shortest_path : dict, optional
             Camino más corto entre el estado inicial y el estado terminal. The default is None.
+            
         q_star : dict, optional
             Tabla Q* óptima. The default is None.
+            
         verbose : bool, optional
             Indica si se debe mostrar información de la ejecución. The default is True.
 
