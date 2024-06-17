@@ -154,14 +154,14 @@ def get_optimal_policy(grafo, dest_node):
     Returns
     -------
     policies: dict
-        diccionario con las políticas óptimas para cada nodo del grafo. Tiene la forma {nodo: política, ..., nodo: política}
+        diccionario con las política óptima para cada nodo del grafo. Tiene la forma {nodo: política, ..., nodo: política}
     """
     # Iniciliazar el conjunto de nodos visitados
     visited_nodes = set()
     # Inicializar el conjunto de nodos restantes
     remaining_nodes = set(grafo.nodes())
     # Inicializar el diccionario de política
-    policies = {}
+    policy = {}
 
     while remaining_nodes:
         # Seleccionar un nodo no visitado
@@ -171,13 +171,15 @@ def get_optimal_policy(grafo, dest_node):
             grafo, source_node, dest_node
         )
         shortest_path_as_dict = get_path_as_stateactions_dict(shortest_path)
-        # Agrega todas las llaves y valores del diccionario shortest_path_as_dict al diccionario policies
-        policies.update(shortest_path_as_dict)
+        # Agrega todas las llaves y valores del diccionario shortest_path_as_dict al diccionario policy
+        policy.update(shortest_path_as_dict)
         # Agraga todos los nodos visitados al conjunto de nodos visitados
         visited_nodes.update(shortest_path)
         # Elimina todos los nodos visitados del conjunto de nodos restantes
         remaining_nodes.difference_update(visited_nodes)
-    return policies
+    # Agrega el nodo de destino a la política
+    policy[dest_node] = dest_node
+    return policy
 
 
 def get_qtable_for_semipolicy(graph, policy, dest):
