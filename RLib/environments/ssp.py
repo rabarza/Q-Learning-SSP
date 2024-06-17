@@ -35,14 +35,11 @@ def get_edge_length(G, orig, dest):
 
 
 def get_edge_speed(G, orig, dest, avg_speed=25):
-    try:
-        # edge_speed = get_edge_attribute(G, orig, dest, "speed_kph")
-        edge_speed = avg_speed
-    except Exception:
-        edge_speed = avg_speed
-    if edge_speed - avg_speed > 10:
-        edge_speed = avg_speed
-    return edge_speed
+    # Si hay atributo de velocidad en el arco
+    if 'speed_kph' in G.edges[(orig, dest)]:
+        edge_speed = G.edges[(orig, dest)]['speed_kph']
+        return edge_speed
+    return avg_speed
 
 
 def get_edge_cost(
