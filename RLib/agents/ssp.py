@@ -76,7 +76,6 @@ class QAgent:
         formula = self.alpha_formula.replace("N(s,a)", "t")
         # Evaluar la fórmula de alpha dinámico con el valor de t
         alpha_value = eval(formula)
-        print(f"alpha_value: {alpha_value}, state: {state}, action: {action}, t: {t}")
         return alpha_value
 
     def select_action(self, state):
@@ -280,7 +279,7 @@ class QAgentSSP(QAgent):
             self.regret[episode] = optimal_cost - np.sum(self.scores[:episode+1])/max(episode, 1)
 
             # Mostrar información de la ejecución
-            message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error policy: {max_norm_error_shortest_path:.3f}"
+            message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error path: {max_norm_error_shortest_path:.3f}\n"
             stqdm.write(message)
 
     def best_path(self, state):
