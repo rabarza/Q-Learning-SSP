@@ -115,7 +115,7 @@ class UCB1ActionSelector(ActionSelector):
             # Obtener los valores de q para cada acción a partir del estado s
             q_state = np.array(list(agent.q_table[state].values()))
             # Calcular el valor de los estimadores de q utilizando la estrategia UCB
-            ucb = q_state + np.sqrt(c * np.log(agent.num_episodes) / times_actions)
+            ucb = q_state + np.sqrt(c * np.log(agent.times_states[state]) / times_actions)
             # Seleccionar acción
             action_idxs = np.where(ucb == np.max(ucb))[0]
             action_idx = np.random.choice(action_idxs)
