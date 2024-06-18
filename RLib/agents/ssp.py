@@ -161,6 +161,7 @@ class QAgentSSP(QAgent):
         shortest_path=None,
         q_star=None,
         verbose=False,
+        st=False
     ):
         """
         Resuelve el problema del Shortest Path usando el algoritmo Q-Learning
@@ -218,10 +219,8 @@ class QAgentSSP(QAgent):
         initial_state = self.env.start_state
         # Obtener el costo óptimo para calcular el regret
         optimal_cost = max_q_table(q_star, initial_state)
-
-        for episode in stqdm(
-            range(num_episodes), desc="Completado", ncols=100, leave=True
-        ):
+        episodes_range = tqdm(range(num_episodes)) if not st else stqdm(range(num_episodes), desc="Completado", ncols=100, leave=True)
+        for episode in episodes_range:
             done = False
             self.actual_episode = episode
             total_score = 0
@@ -280,7 +279,7 @@ class QAgentSSP(QAgent):
 
             # Mostrar información de la ejecución
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error path: {max_norm_error_shortest_path:.3f}\n"
-            stqdm.write(message)
+            stqdm.write(message) if st else print(message)
 
     def best_path(self, state=None):
         """Devuelve el mejor camino desde un estado inicial hasta el estado terminal
