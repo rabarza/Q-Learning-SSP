@@ -279,7 +279,7 @@ class QAgentSSP(QAgent):
 
             # Mostrar información de la ejecución
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error path: {max_norm_error_shortest_path:.3f}\n"
-            stqdm.write(message) if st else print(message)
+            stqdm.write(message) if st else tqdm.write(message)
 
     def best_path(self, state=None):
         """Devuelve el mejor camino desde un estado inicial hasta el estado terminal
