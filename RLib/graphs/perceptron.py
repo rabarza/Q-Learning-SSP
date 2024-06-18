@@ -3,8 +3,7 @@ import networkx as nx
 import random
 
 
-def create_perceptron_graph(layers=["Entrada", "Salida"],
-                            nodes_by_layer=[1, 1],
+def create_perceptron_graph(nodes_by_layer=[1, 1],
                             min_length=1,
                             max_length=20,
                             ):
@@ -13,8 +12,6 @@ def create_perceptron_graph(layers=["Entrada", "Salida"],
 
     Parámetros
     ----------
-    layers : list of str
-        Nombres de las layers del perceptrón. La primera capa es la de entrada y la última es la de salida. 
     nodes_by_layer : list of int
         Número de nodos en cada capa del perceptrón. El i-ésimo elemento de la lista indica el número de nodos en la i-ésima capa.
     min_length : int
@@ -27,23 +24,27 @@ def create_perceptron_graph(layers=["Entrada", "Salida"],
     perceptron_graph : nx.DiGraph
         Grafo dirigido que representa el perceptrón multicapa.
     """
-    if type(layers) != list or type(nodes_by_layer) != list:
+    if type(nodes_by_layer) != list:
         raise TypeError(
             "Los parámetros layers y nodes_by_layer deben ser listas.")
 
+    # Definir las capas del perceptrón y el número de nodos en cada capa
+    layers = list(map(lambda x: f'Capa {x}', range(len(nodes_by_layer))))
+    layers[0] = 'Entrada'
+    layers[-1] = 'Salida'
+
     # Crear un grafo dirigido para representar el perceptrón
     perceptron_graph = nx.DiGraph()
-
-    # Definir las layers del perceptrón y el número de nodos en cada capa
 
     # Agregar nodos al grafo con las posiciones en el plano
     posiciones = {}
     x_step = 1.5  # Separación horizontal entre layers
     y_step = 1  # Separación vertical entre nodos en la misma capa
+
     for i, capa in enumerate(layers):
         for j in range(nodes_by_layer[i]):
             posiciones[(capa, j)] = (i * x_step,
-                                     j * y_step - (nodes_by_layer[i] - 1) / 2)
+                                     - (j * y_step) + (nodes_by_layer[i] - 1) / 2)
             # Agregar nodos al grafo con las posiciones definidas.
             # Las posiciones se almacenan en la llave "pos" de cada nodo.
             perceptron_graph.add_node((capa, j), pos=posiciones[(capa, j)])
@@ -216,3 +217,9 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
 
     # Mostrar la figura
     fig.show()
+
+
+if __name__ == "__main__":
+    # Crear un perceptrón con 3 capas y 2 nodos en cada capa
+    perceptron_graph = create_perceptron_graph(nodes_by_layer=[1, 2, 10, 2, 1])
+    plot_network_graph(perceptron_graph, use_annotations=True)
