@@ -2,7 +2,7 @@ import random
 from itertools import cycle
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-
+import numpy as np
 # ================= Comparación de modelos =================
 
 # ======================= Get label =======================
@@ -209,6 +209,8 @@ def plot_results_per_episode_comp_plotly(
                 values = model.max_norm_error_shortest_path
             elif criteria == "regret":
                 values = model.regret
+            elif criteria == "cumulative regret":
+                values = np.cumsum(model.regret)
             else:
                 raise ValueError("Invalid comparison criteria")
 
