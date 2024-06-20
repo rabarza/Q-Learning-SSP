@@ -148,17 +148,12 @@ class Exp3ActionSelector(ActionSelector):
             eta: parámetro de exploración
         """
 
-        self.eta_formula = eta
-        self.eta_type = "constant" if type(eta) == float else "dynamic"
+        self.eta = str(eta)
         self.strategy = "exp3"
         return locals()
 
     def calculate_eta(self, t, T):
-        eta = (
-            eval(self.eta_formula)
-            if self.eta_type == "dynamic"
-            else self.eta_formula
-        )
+        eta = eval(self.eta)
         return eta
 
     def calculate_probabilities(self, agent, state, eta):
@@ -193,7 +188,7 @@ class Exp3ActionSelector(ActionSelector):
         return action
 
     def get_label(self):
-        return f"η = {self.eta_formula}"
+        return f"η = {self.eta}"
 
 
 if __name__ == "__main__":

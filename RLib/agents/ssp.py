@@ -248,8 +248,6 @@ class QAgentSSP(QAgent):
                 state = next_state
                 # Aumentar la cantidad de pasos del episodio
                 self.steps[episode] += 1
-                if self.steps[episode] > 1000:
-                    break
                 # Acumular el puntaje obtenido en el episodio
                 total_score += reward
                 # Imprimir información de la ejecución
