@@ -115,7 +115,8 @@ class UCB1ActionSelector(ActionSelector):
             # Obtener los valores de q para cada acción a partir del estado s
             q_state = np.array(list(agent.q_table[state].values()))
             # Calcular el valor de los estimadores de q utilizando la estrategia UCB
-            ucb = q_state + np.sqrt(c * np.log(agent.times_states[state]) / times_actions)
+            ucb = q_state + \
+                np.sqrt(c * np.log(agent.times_states[state]) / times_actions)
             # Seleccionar acción
             action_idxs = np.where(ucb == np.max(ucb))[0]
             action_idx = np.random.choice(action_idxs)
@@ -131,60 +132,68 @@ class Exp3ActionSelector(ActionSelector):
     """Exp3 action selector"""
 
     @auto_super_init
-    def __init__(self, beta):
+    def __init__(self, eta):
         """
-        Exp3 action selector tiene un parámetro beta que puede ser constante o dinámico. En el caso de ser constante se debe ingresar un valor de beta, en el caso de ser dinámico se debe ingresar una fórmula para calcular beta en función del tiempo y el número de episodios.
+        Exp3 action selector tiene un parámetro eta que puede ser constante o dinámico. En el caso de ser constante se debe ingresar un valor de eta, en el caso de ser dinámico se debe ingresar una fórmula para calcular eta en función del tiempo y el número de episodios.
 
         Ejemplos: (t: instante de tiempo, T: número de episodios)
-            - beta = 0.1 (o cualquier valor de beta constante de tipo float)
-            - beta = 't / T'
-            - beta = 'log(t)'
-            - beta = 'sqrt(t)'
-            - beta = 'sqrt(t) / T'
-            - beta = 'log(t) / T'
+            - eta = 0.1 (o cualquier valor de eta constante de tipo float)
+            - eta = 't / T'
+            - eta = 'log(t)'
+            - eta = 'sqrt(t)'
+            - eta = 'sqrt(t) / T'
+            - eta = 'log(t) / T'
 
         Parámetros:
-            beta: parámetro de exploración
+            eta: parámetro de exploración
         """
 
-        self.beta_formula = beta
-        self.beta_type = "constant" if type(beta) == float else "dynamic"
+        self.eta_formula = eta
+        self.eta_type = "constant" if type(eta) == float else "dynamic"
         self.strategy = "exp3"
         return locals()
 
-    def select_action(self, agent, state, normalize=True):
-        t = agent.times_states[state]
-        T = agent.num_episodes
-
-        beta = (
-            eval(self.beta_formula)
-            if self.beta_type == "dynamic"
-            else self.beta_formula
+    def calculate_eta(self, t, T):
+        eta = (
+            eval(self.eta_formula)
+            if self.eta_type == "dynamic"
+            else self.eta_formula
         )
+        return eta
 
+    def calculate_probabilities(self, agent, state, eta):
         # Obtener los valores de q para cada acción a partir del estado s
         q_state = np.array(list(agent.q_table[state].values()))
-        q_actions = list(agent.q_table[state].keys())
-        actions_idx = np.arange(len(q_actions))
-        exp_values = (
-            np.exp((q_state - np.max(q_state)) * beta)
-            if normalize
-            else np.exp(q_state * beta)
-        )
-        # Generar distribucion de probabilidad exponencial
+        # Los valores de q se normalizan para evitar problemas de overflow (restando el máximo valor de q)
+        max_q = np.max(q_state)
+        exp_values = np.exp((q_state - max_q) * eta)
+        # Calcular probabilidades de selección de acciones
         probabilities = exp_values / np.sum(exp_values)
-        # Muestrear acción de acuerdo a la distribución generada
+        return probabilities
+
+    def select_action(self, agent, state):
+        t = agent.times_states[state]
+        T = agent.num_episodes
+        eta = self.calculate_eta(t, T)
+
+        # Calcular probabilidades de selección de acciones
+        actions = list(agent.q_table[state].keys())
+        actions_idx = np.arange(len(actions))
+        probabilities = self.calculate_probabilities(agent, state, eta)
         try:
-            selected_action_idx = np.random.choice(actions_idx, p=probabilities)
-            action = q_actions[selected_action_idx]
+            # Muestrear acción de acuerdo a la distribución generada
+            # Se utiliza el índice para evitar problemas de tipo de datos en el muestreo
+            action_idx = np.random.choice(
+                actions_idx, p=probabilities)
+            action = actions[action_idx]
         except ValueError:
             raise ValueError(
-                f"Error al seleccionar acción en estado {state}. Probabilidades: {probabilities}. Acciones: {q_actions}"
+                f"Error al seleccionar acción en estado {state}. Probabilidades: {probabilities}. Acciones: {actions}"
             )
         return action
 
     def get_label(self):
-        return f"η = {self.beta_formula}"
+        return f"η = {self.eta_formula}"
 
 
 if __name__ == "__main__":
