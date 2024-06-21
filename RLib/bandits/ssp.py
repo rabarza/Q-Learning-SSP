@@ -27,6 +27,7 @@ def train_bandit(bandit, num_rounds, distribution='normal'):
         reward = min(- random_time(path_lengths[chosen_arm],
                                    25, distribution), 0)
         bandit.pull(chosen_arm, reward)
+        print(f"Round {t}: Chosen arm {chosen_arm}, Reward {reward}, Regret {bandit.regret(t)}")
 
 
 class MultiArmedBandit:
@@ -207,7 +208,7 @@ if __name__ == '__main__':
 
     # Create a perceptron graph
     nodes_by_layer = [1, 20, 1]
-    graph = create_perceptron_graph(nodes_by_layer, 100, 2000)
+    graph = create_perceptron_graph(nodes_by_layer, 100, 20000)
     # Encontrar todos los caminos desde 'Entrada' hasta 'Salida'
     start_node = ('Entrada', 0)
     end_node = ('Salida', 0)
@@ -215,7 +216,8 @@ if __name__ == '__main__':
     all_paths = find_all_paths(graph, start_node, end_node)
     # Calcular el largo y el costo medio de cada camino
     path_lengths = calculate_path_weights(graph, all_paths)
-    cost_distribution = 'normal'
+    # Escoger la distribución de la velocidad de los arcos
+    cost_distribution = 'uniform'
     path_costs = list(
         map(lambda x: - expected_time(x, 25, cost_distribution), path_lengths))
 
@@ -232,10 +234,10 @@ if __name__ == '__main__':
         bandit_boltz = BoltzmannBandit(path_costs, eta=eta)
 
         # Realizar entrenamientos
-        train_bandit(bandit_eps, 10000, cost_distribution)
-        train_bandit(bandit_ucb, 10000, cost_distribution)
-        train_bandit(bandit_exp3, 10000, cost_distribution)
-        train_bandit(bandit_boltz, 10000, cost_distribution)
+        train_bandit(bandit_eps, 50000, cost_distribution)
+        train_bandit(bandit_ucb, 50000, cost_distribution)
+        train_bandit(bandit_exp3, 50000, cost_distribution)
+        train_bandit(bandit_boltz, 50000, cost_distribution)
 
         bandits_list.append(bandit_eps)
         bandits_list.append(bandit_ucb)
