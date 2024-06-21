@@ -167,6 +167,8 @@ def expected_time(arc_length, avg_speed=25, distribution="lognormal"):
         raise ValueError("Unsupported distribution type")
 
 def random_time(arc_length, avg_speed=25, distribution="lognormal"):
+    """Returns a random travel time given an arc length and average speed. The distribution type can be lognormal, normal, or uniform."""
+    
     validate_positive_parameters(arc_length, avg_speed)
     
     if distribution == "lognormal":

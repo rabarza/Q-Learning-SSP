@@ -19,8 +19,10 @@ def plot_bandits_regret(bandits, criteria="regret"):
         iterations = list(range(episodes))
         if criteria == "regret":
             values = bandit.regret_history
-        elif criteria == "cumulative regret":
-            values = np.cumsum(bandit.regret_history)
+        elif criteria == "average regret":
+            values = bandit.average_regret_history
+        elif criteria == "pseudo regret":
+            values = bandit.pseudo_regret_history
         elif criteria == "rewards":
             values = bandit.rewards
         elif criteria == "pulls":
