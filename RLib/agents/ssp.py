@@ -1,14 +1,17 @@
+import sys
+import os
+# Importar RLib desde el directorio superior
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+
+import copy
+import random
 import numpy as np
 from math import sqrt, log
-import matplotlib.pyplot as plt
-import random
-import copy
 from tqdm import tqdm
-from datetime import datetime
-from RLib.utils.table_utils import max_norm, exploitation
 from stqdm import stqdm
 from RLib.action_selection.action_selector import EpsilonGreedyActionSelector
-from RLib.utils.table_utils import max_q_table
+from RLib.utils.table_utils import max_q_table, max_norm, exploitation
+import matplotlib.pyplot as plt
 
 
 class QAgent:
@@ -175,6 +178,8 @@ class QAgentSSP(QAgent):
             Distribución de probabilidad que se utiliza para generar los valores de recompensa. Puede ser:
                 - 'expectation-lognormal': distribución lognormal con media igual a la recompensa esperada.
                 - 'lognormal': distribución lognormal con media igual a 1.
+                - 'normal': distribución normal con media igual a 1.
+                - 'random': distribución uniforme entre 0 y 1. The default is 'expectation-lognormal'.
                 
         shortest_path : dict, optional
             Camino más corto entre el estado inicial y el estado terminal. The default is None.
@@ -301,3 +306,25 @@ class QAgentSSP(QAgent):
             if self.env.terminal_state == state:
                 done = True
         return path
+
+if __name__ == "__main__":
+    from RLib.environments.ssp import SSPEnv
+    from RLib.graphs.perceptron import create_perceptron_graph, plot_network_graph
+    from RLib.utils.dijkstra_utils import get_optimal_policy, get_q_table_for_policy, get_shortest_path_from_policy
+    
+    # Crear el grafo y el entorno
+    graph = create_perceptron_graph([1, 20, 1], 100, 2000)
+    start_node = ('Entrada', 0)
+    end_node = ('Salida', 0)
+    environment = SSPEnv(graph, start_node, end_node, costs_distribution="lognormal")
+    # Obtener la política óptima y la tabla Q para la política óptima
+    policy = get_optimal_policy(environment.graph, end_node)
+    optimal_q_table = get_q_table_for_policy(environment.graph, policy, end_node, st=False)
+    # Obtener lista de nodos del camino más corto
+    shortest_path = get_shortest_path_from_policy(policy, start_node, end_node)
+    # Crear el selector de acciones y el agente Q-Learning
+    eps_selector = EpsilonGreedyActionSelector(epsilon=0.1)    
+    agent = QAgentSSP(environment=environment, dynamic_alpha=True, alpha_formula='1 / N(s,a)', action_selector=eps_selector)
+    # Entrenar al agente
+    agent.train(num_episodes=10000, distribution='lognormal', shortest_path=shortest_path, q_star=optimal_q_table)
+    print(agent.best_path())
