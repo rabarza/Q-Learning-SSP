@@ -6,7 +6,7 @@ import random
 def create_perceptron_graph(nodes_by_layer=[1, 1],
                             min_length=1,
                             max_length=20,
-                            ):
+                            ) -> nx.DiGraph:
     """ 
     Crea un grafo dirigido que representa un perceptrón multicapa.
 
@@ -222,4 +222,4 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
 if __name__ == "__main__":
     # Crear un perceptrón con 3 capas y 2 nodos en cada capa
     perceptron_graph = create_perceptron_graph(nodes_by_layer=[1, 2, 10, 2, 1])
-    plot_network_graph(perceptron_graph, use_annotations=True)
+    plot_network_graph(perceptron_graph, use_annotations=True, label_pos=0.6)
