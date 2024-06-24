@@ -1,17 +1,16 @@
+import matplotlib.pyplot as plt
+from RLib.utils.table_utils import max_q_table, max_norm, exploitation
+from RLib.action_selection.action_selector import EpsilonGreedyActionSelector
+from stqdm import stqdm
+from tqdm import tqdm
+from math import sqrt, log
+import numpy as np
+import random
+import copy
 import sys
 import os
 # Importar RLib desde el directorio superior
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-
-import copy
-import random
-import numpy as np
-from math import sqrt, log
-from tqdm import tqdm
-from stqdm import stqdm
-from RLib.action_selection.action_selector import EpsilonGreedyActionSelector
-from RLib.utils.table_utils import max_q_table, max_norm, exploitation
-import matplotlib.pyplot as plt
 
 
 class QAgent:
@@ -160,7 +159,6 @@ class QAgentSSP(QAgent):
     def train(
         self,
         num_episodes=100,
-        distribution="expectation-lognormal",
         shortest_path=None,
         q_star=None,
         verbose=False,
@@ -173,20 +171,13 @@ class QAgentSSP(QAgent):
         ----------
         num_episodes : int
             Número de episodios a ejecutar. The default is 100.
-            
-        distribution : str, optional
-            Distribución de probabilidad que se utiliza para generar los valores de recompensa. Puede ser:
-                - 'expectation-lognormal': distribución lognormal con media igual a la recompensa esperada.
-                - 'lognormal': distribución lognormal con media igual a 1.
-                - 'normal': distribución normal con media igual a 1.
-                - 'random': distribución uniforme entre 0 y 1. The default is 'expectation-lognormal'.
-                
+
         shortest_path : dict, optional
             Camino más corto entre el estado inicial y el estado terminal. The default is None.
-            
+
         q_star : dict, optional
             Tabla Q* óptima. The default is None.
-            
+
         verbose : bool, optional
             Indica si se debe mostrar información de la ejecución. The default is True.
 
@@ -197,13 +188,12 @@ class QAgentSSP(QAgent):
 
         self.num_episodes = num_episodes
         self.shortest_path = shortest_path
-        self.distribution = distribution
 
         self.steps = np.zeros(num_episodes)
         self.scores = np.zeros(num_episodes)
         self.avg_scores = np.zeros(num_episodes)
         self.regret = np.zeros(num_episodes)
-        self.cumulative_regret = np.zeros(num_episodes)
+        self.average_regret = np.zeros(num_episodes)
 
         self.q_star = q_star
 
@@ -224,7 +214,8 @@ class QAgentSSP(QAgent):
         initial_state = self.env.start_state
         # Obtener el costo óptimo para calcular el regret
         optimal_cost = max_q_table(q_star, initial_state)
-        episodes_range = tqdm(range(num_episodes)) if not st else stqdm(range(num_episodes), desc="Completado", ncols=100, leave=True)
+        episodes_range = tqdm(range(num_episodes)) if not st else stqdm(
+            range(num_episodes), desc="Completado", ncols=100, leave=True)
         for episode in episodes_range:
             done = False
             self.actual_episode = episode
@@ -236,7 +227,7 @@ class QAgentSSP(QAgent):
                 action = self.select_action(state)
                 alpha = self.get_alpha(state, action)
                 next_state, reward, done, info = self.env.take_action(
-                    state, action, distribution
+                    state, action
                 )
 
                 # Actualizar valores Q_table
@@ -276,9 +267,13 @@ class QAgentSSP(QAgent):
             self.max_norm_error_shortest_path[episode] = max_norm_error_shortest_path
             # Almacenar cantidad promedio de valores q y del episodio
             self.scores[episode] = total_score
-            self.avg_scores[episode] = total_score / max(self.steps[episode], 1)
+            self.avg_scores[episode] = total_score / \
+                max(self.steps[episode], 1)
             # Calcular el regret
-            self.regret[episode] = optimal_cost - np.sum(self.scores[:episode+1])/max(episode, 1)
+            self.average_regret[episode] = optimal_cost - \
+                np.sum(self.scores[:episode+1])/max(episode, 1)
+            self.regret[episode] = episode*optimal_cost - \
+                np.sum(self.scores[:episode+1])
 
             # Mostrar información de la ejecución
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error path: {max_norm_error_shortest_path:.3f}\n"
@@ -307,24 +302,29 @@ class QAgentSSP(QAgent):
                 done = True
         return path
 
+
 if __name__ == "__main__":
     from RLib.environments.ssp import SSPEnv
     from RLib.graphs.perceptron import create_perceptron_graph, plot_network_graph
     from RLib.utils.dijkstra_utils import get_optimal_policy, get_q_table_for_policy, get_shortest_path_from_policy
-    
+
     # Crear el grafo y el entorno
     graph = create_perceptron_graph([1, 20, 1], 100, 2000)
     start_node = ('Entrada', 0)
     end_node = ('Salida', 0)
-    environment = SSPEnv(graph, start_node, end_node, costs_distribution="lognormal")
+    environment = SSPEnv(graph, start_node, end_node,
+                         costs_distribution="lognormal")
     # Obtener la política óptima y la tabla Q para la política óptima
     policy = get_optimal_policy(environment.graph, end_node)
-    optimal_q_table = get_q_table_for_policy(environment.graph, policy, end_node, st=False)
+    optimal_q_table = get_q_table_for_policy(
+        environment.graph, policy, end_node, st=False)
     # Obtener lista de nodos del camino más corto
     shortest_path = get_shortest_path_from_policy(policy, start_node, end_node)
     # Crear el selector de acciones y el agente Q-Learning
-    eps_selector = EpsilonGreedyActionSelector(epsilon=0.1)    
-    agent = QAgentSSP(environment=environment, dynamic_alpha=True, alpha_formula='1 / N(s,a)', action_selector=eps_selector)
+    eps_selector = EpsilonGreedyActionSelector(epsilon=0.1)
+    agent = QAgentSSP(environment=environment, dynamic_alpha=True,
+                      alpha_formula='1 / N(s,a)', action_selector=eps_selector)
     # Entrenar al agente
-    agent.train(num_episodes=10000, distribution='lognormal', shortest_path=shortest_path, q_star=optimal_q_table)
+    agent.train(num_episodes=10000, distribution='lognormal',
+                shortest_path=shortest_path, q_star=optimal_q_table)
     print(agent.best_path())
