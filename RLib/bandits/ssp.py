@@ -1,7 +1,13 @@
+import sys
+import os
+
+# Añadir el directorio superior a RLib al PYTHONPATH
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 import random
 import numpy as np
 from math import log, sqrt
 import networkx as nx
+from RLib.distributions.distributions import expected_time, random_time
 
 
 def find_all_paths(graph, start_node, end_node):
@@ -19,7 +25,7 @@ def calculate_path_weights(graph, paths, weight='length'):
     return path_weights
 
 
-def train_bandit(bandit, num_rounds, distribution='normal'):
+def train_bandit(bandit, path_lengths, num_rounds, distribution='normal'):
     regrets = []
     for t in range(1, num_rounds + 1):
         chosen_arm = bandit.select_arm()
