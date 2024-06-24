@@ -1,13 +1,25 @@
 import copy
 import networkx as nx
+import numpy as np
 
 # ======================= Generar tabla =======================
 
-def dict_states_actions_zeros(G):
+def dict_states_zeros(graph) -> dict:
+        """Retorna un diccionario con los estados con valor 0. Es útil para inicializar la tabla del número de visitas a cada estado, por ejemplo. Tiene la forma {estado: 0, ..., estado: 0}"""
+        return {state: 0 for state, actions in nx.to_dict_of_lists(graph).items()}
+
+def dict_states_actions_zeros(graph) -> dict:
         ''' Retorna un diccionario con los estados y acciones con valor 0. Es útil para inicializar la tabla Q, o la tabla de la cantidad de veces que se ha visitado cada par estado-acción. 
         Tiene la forma {estado: {accion: 0, ..., accion: 0}, ..., estado: {accion: 0, ..., accion: 0}}
         ''' 
-        return {state: {action : 0 for action in actions} for state, actions in nx.to_dict_of_lists(G).items()}
+        return {state: {action : 0 for action in actions} for state, actions in nx.to_dict_of_lists(graph).items()}
+
+def dict_states_actions_random(graph):
+        """Retorna un diccionario con los estados y acciones con valor aleatorio. Es útil para inicializar la tabla Q, o la tabla de la cantidad de veces que se ha visitado cada par estado-acción. Tiene la forma {estado: {accion: valor_aleatorio, ..., accion: valor_aleatorio}, ..., estado: {accion: valor_aleatorio, ..., accion: valor_aleatorio}}"""
+        return {
+            state: {action: np.random.random() for action in actions}
+            for state, actions in nx.to_dict_of_lists(graph).items()
+        }
     
 # ======================= Norma máxima =======================
 def max_norm(q_table1, q_table2, path=None):

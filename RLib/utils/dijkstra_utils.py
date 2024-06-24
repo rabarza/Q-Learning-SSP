@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 
 # ======================= Dijkstra =======================
-def dijkstra_shortest_path(graph, source, target, avg_speed=25):
+def dijkstra_shortest_path(graph, source, target, avg_speed=25, distribution="lognormal"):
     """
     Calcula el camino más corto desde el nodo de origen al nodo de destino usando el algoritmo de Dijkstra. Minimizando el tiempo de viaje de acuerdo a la velocidad promedio de los vehículos en la ciudad del grafo. Si se usa la esperanza de la distribución log-normal del peso escogido ('weight') como peso de los arcos, se minimiza el tiempo de viaje esperado.
 
@@ -39,7 +39,8 @@ def dijkstra_shortest_path(graph, source, target, avg_speed=25):
     unvisited_nodes = list(graph.nodes())
     while unvisited_nodes:
         # Seleccionar el nodo con la distancia más corta (nodo provisional)
-        current_node = min(unvisited_nodes, key=lambda node: shortest_distances[node])
+        current_node = min(
+            unvisited_nodes, key=lambda node: shortest_distances[node])
         # Eliminar el nodo actual de la lista de no visitados
         unvisited_nodes.remove(current_node)
         # Si alcanzamos el nodo de destino, podemos terminar el algoritmo
@@ -49,9 +50,10 @@ def dijkstra_shortest_path(graph, source, target, avg_speed=25):
         for neighbor in graph.neighbors(current_node):
             # Calcular la distancia desde el nodo actual al vecino
             arc_length = get_edge_length(graph, current_node, neighbor)
-            arc_speed = get_edge_speed(graph, current_node, neighbor, avg_speed)
+            arc_speed = get_edge_speed(
+                graph, current_node, neighbor, avg_speed)
 
-            time = expected_time(arc_length, arc_speed)
+            time = expected_time(arc_length, arc_speed, distribution)
 
             distance = shortest_distances[current_node] + time
 
@@ -140,7 +142,7 @@ def get_path_as_stateactions_dict(path):
     return path_dict
 
 
-def get_optimal_policy(grafo, dest_node):
+def get_optimal_policy(grafo, dest_node, distribution="lognormal"):
     """
     Calcula la política óptima completa para cada nodo del grafo realizando una búsqueda de Dijkstra desde cada nodo.
 
@@ -168,7 +170,7 @@ def get_optimal_policy(grafo, dest_node):
         source_node = next(node for node in remaining_nodes)
         # Realizar una búsqueda de Dijkstra desde el nodo seleccionado como source_node
         distancias, padres, shortest_path = dijkstra_shortest_path(
-            grafo, source_node, dest_node
+            grafo, source_node, dest_node, distribution=distribution
         )
         shortest_path_as_dict = get_path_as_stateactions_dict(shortest_path)
         # Agrega todas las llaves y valores del diccionario shortest_path_as_dict al diccionario policy
@@ -202,16 +204,21 @@ def get_qtable_for_semipolicy(graph, policy, dest):
     q_table = dict_states_actions_zeros(graph)
     for key, value in policy.items():
         # costo acumulado de ir desde el nodo 'key' al nodo de destino 'dest' siguiendo la política 'policy'
-        q_table[key][value] = -get_cumulative_edges_cost(graph, policy, key, dest)
+        q_table[key][value] = - \
+            get_cumulative_edges_cost(graph, policy, key, dest)
     return q_table
 
 
-def get_q_table_for_policy(graph, policy, dest_node, st=True):
+def get_q_table_for_policy(graph, policy, dest_node, distribution, st=True):
     """Retorna la tabla Q óptima a partir de las políticas óptimas de cada nodo.
     Tiene la forma {estado: {accion: valor, ..., accion: valor}, ..., estado: {accion: valor, ..., accion: valor}}
     """
     from RLib.environments.ssp import get_edge_cost, get_cumulative_edges_cost
-
+    if "expectation" in distribution:
+        distribution = distribution.split("-")[1]
+    else:
+        pass
+    
     q_star = dict_states_actions_zeros(graph)
 
     if st:
@@ -219,9 +226,12 @@ def get_q_table_for_policy(graph, policy, dest_node, st=True):
             if state == dest_node:
                 continue
             for action in q_star[state].keys():
-                tij = get_edge_cost(graph, state, action)
+                # Como se está trabajando con la esperanza de la distribución, se debe considerar el tiempo esperado de viaje
+                tij = get_edge_cost(graph, state, action,
+                                    "expectation-"+distribution)
                 q_star[state][action] = -(
-                    tij + get_cumulative_edges_cost(graph, policy, action, dest_node)
+                    tij +
+                    get_cumulative_edges_cost(graph, policy, action, dest_node)
                 )
     else:
         for state in tqdm(q_star.keys(), desc="Calculando tabla Q"):
@@ -230,6 +240,7 @@ def get_q_table_for_policy(graph, policy, dest_node, st=True):
             for action in q_star[state].keys():
                 tij = get_edge_cost(graph, state, action)
                 q_star[state][action] = -(
-                    tij + get_cumulative_edges_cost(graph, policy, action, dest_node)
+                    tij +
+                    get_cumulative_edges_cost(graph, policy, action, dest_node)
                 )
     return q_star
