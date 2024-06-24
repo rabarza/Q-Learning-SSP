@@ -1,15 +1,18 @@
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+import copy
 import osmnx as ox
 import networkx as nx
 import numpy as np
 from RLib.environments.ssp import SSPEnv
 from RLib.agents.ssp import QAgentSSP
 from RLib.utils.dijkstra_utils import (
-    dijkstra_shortest_path,
-    get_path_as_stateactions_dict,
-    get_qtable_for_semipolicy,
-    get_q_table_for_policy,
     get_optimal_policy,
+    get_shortest_path_from_policy,
+    get_q_table_for_policy,
 )
+
 from RLib.utils.file_utils import download_graph, save_model_results
 from RLib.utils.table_utils import dict_states_actions_zeros
 import winsound  # Para hacer sonar un beep al finalizar el entrenamiento
@@ -19,74 +22,101 @@ from RLib.action_selection.action_selector import (
     UCB1ActionSelector,
     Exp3ActionSelector,
 )
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
-# Descargar el grafo
-G = ox.graph_from_place("Piedmont, California", network_type="drive")
+
+# Descargar el grafo y obtener el componente conexo más grande
+location_name = "Piedmont, California"
+G = ox.graph_from_place(location_name, network_type="drive")
+# Añadir el atributo de velocidad a las aristas (speed_kph)
+G = ox.add_edge_speeds(G)
+G.to_directed()
 G = ox.utils_graph.get_largest_component(
     G, strongly=True
-)  # Obtener la componente fuertemente conexa más grande
+)
 # fig, ax = ox.plot_graph(G, node_size=0, edge_linewidth=0.5, figsize=(10,10))
 
 # # Nodos de origen y destino
 orig_node = 53017091
 dest_node = 53035699
+distribution = "normal"
+
+# Añadir un arco recurrente de largo 0 en el nodo terminal
+# Verificar si el borde entre dest_node y dest_node existe
+if G.has_edge(dest_node, dest_node):
+    # Actualizar los atributos del borde existente
+    G[dest_node][dest_node][0]['length'] = 0  # Actualiza el atributo 'length'
+else:
+    # Agregar un nuevo borde con los atributos deseados
+    G.add_edge(dest_node, dest_node, length=0)
 
 # Calcular el camino más corto desde el nodo de inicio al nodo de destino
-distancias, padres, shortest_path = dijkstra_shortest_path(G, orig_node, dest_node)
-
-# Obtener la política óptima a partir del camino más corto dado el shortest_path
-policy = get_path_as_stateactions_dict(shortest_path)
-
-# Obtener la tabla Q óptima a partir de la política óptima
-q_star = get_qtable_for_semipolicy(G, policy, dest_node)
-
-# Obtener la política óptima para cada nodo en el grafo hasta el destino
-policies = get_optimal_policy(G, dest_node)
+optimal_policy = get_optimal_policy(G, dest_node, distribution)
+shortest_path = get_shortest_path_from_policy(
+    optimal_policy, orig_node, dest_node
+)
 
 # Obtener la tabla Q* a partir de las políticas óptimas
-q_star = get_q_table_for_policy(G, policies, dest_node)
+optimal_q_table = get_q_table_for_policy(G, optimal_policy, dest_node, distribution, False)
+# serialized_q_table = serialize_table(optimal_q_table)
 
-alpha_values = np.linspace(0.01, 0.1, 10)
 NUM_EPISODES = 40000
 # Crear un entorno
-env = SSPEnv(grafo=G, start_state=orig_node, terminal_state=dest_node)
+env = SSPEnv(G, orig_node, dest_node, distribution)
 
-greedy_agents = []
 
 selectors = {
-    "e-greedy": EpsilonGreedyActionSelector,
-    "UCB1": UCB1ActionSelector,
-    "exp3": Exp3ActionSelector,
+    "e-greedy": EpsilonGreedyActionSelector(epsilon=0.1),
+    "UCB1": UCB1ActionSelector(c=2),
+    "exp3": Exp3ActionSelector(eta="log(t)"),
 }
 
-strategies = ["e-greedy", "UCB1", "exp3"]
 
+alpha_type_dict = {"constante": "constant_alpha",
+                   "dinámico": "dynamic_alpha"}
+
+agents = []
 dynamic_alpha = False
+strategies = list(selectors.keys())
 for strategy in strategies:
-    if not dynamic_alpha:
-        for alpha in alpha_values:
-            piedmont_eps = QAgentSSP(env, alpha=alpha, gamma=1)
-            piedmont_eps.train(
-                NUM_EPISODES, q_star=q_star, policy=policy, distribution="lognormal"
-            )
-            greedy_agents.append(piedmont_eps)
-            name = f"piedmont_eps_{alpha:.2f}"
-            save_model_results(
-                piedmont_eps,
-                nombre=name,
-                path=f"results/piedmont/{strategy}/constant_alpha/",
-            )
-    else:
-        piedmont_eps = QAgentSSP(env, alpha=alpha, gamma=1, dynamic_alpha=True)
-        piedmont_eps.train(
-            NUM_EPISODES, q_star=q_star, policy=policy, distribution="lognormal"
-        )
-        greedy_agents.append(piedmont_eps)
-        name = f"piedmont_eps_dynamic_alpha"
-        save_model_results(
-            piedmont_eps,
-            nombre=name,
-            path=f"results/piedmont/dynamic_alpha/{strategy}/",
-        )
+    # Crear el agente
+    agent = QAgentSSP(env,
+                      dynamic_alpha=dynamic_alpha,
+                      alpha_formula="1 / N(s,a)",
+                      action_selector=selectors[strategy]
+                      )
+    # Entrenar el agente
+    agent.train(
+        NUM_EPISODES,
+        shortest_path=shortest_path,
+        q_star=optimal_q_table,
+    )
+    agents.append(agent)
+
+    for element in strategies:
+        for alpha_type in list(alpha_type_dict.values()):
+            temp_path = f"results/{location_name}/{orig_node}-{dest_node}/{alpha_type}/{element}/"
+            results_dir = os.path.join(BASE_DIR, temp_path)
+            # Si no existe la carpeta, crearla
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+
+    alpha_type_dir = alpha_type_dict[alpha_type]
+    # Ruta para guardar resultados
+    agent_storage_path = os.path.join(
+        BASE_DIR,
+        "results/",
+        f"{location_name}/{orig_node}-{dest_node}/{alpha_type_dir}/{strategy}/",
+    )
+
+    # Si no existe la carpeta, crearla
+    if not os.path.exists(agent_storage_path):
+        os.makedirs(agent_storage_path)
+
+    # Guardar resultados
+    save_model_results(
+        agent, nombre=f"QAgentSSP_", path=agent_storage_path
+    )
 
 winsound.Beep(2000, 4000)  # Beep con frecuencia de 1000 Hz durante 2 segundos
