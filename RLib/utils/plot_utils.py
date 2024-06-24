@@ -209,8 +209,8 @@ def plot_results_per_episode_comp_plotly(
                 values = model.max_norm_error_shortest_path
             elif criteria == "regret":
                 values = model.regret
-            elif criteria == "cumulative regret":
-                values = np.cumsum(model.regret)
+            elif criteria == "average regret":
+                values = model.average_regret
             else:
                 raise ValueError("Invalid comparison criteria")
 
