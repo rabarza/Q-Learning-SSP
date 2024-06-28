@@ -11,7 +11,7 @@ from RLib.distributions.distributions import (
     random_time,
 )
 
-from RLib.utils.table_utils import dict_states_actions_zeros, dict_states_zeros
+from RLib.utils.tables import dict_states_actions_zeros, dict_states_zeros
 
 ##############################################################################################################
 # Stochastic Shortest Path
@@ -59,9 +59,9 @@ def get_edge_cost(
 
     Parámetros:
     ----------
-        G (Grafo): Grafo con el que se va a trabajar
-        source (int): Nodo source (origen)
-        target (int): Nodo target (destino)
+        G (nx.Digraph): Grafo con el que se va a trabajar
+        source (Any): Nodo source (origen)
+        target (Any): Nodo target (destino)
         distribution (str): Distribución de probabilidad que se va a utilizar para obtener el costo estocástico. Si se desea utilizar la esperanza de la distribución, se debe pasar el string "expectation-`distribution`", con un guión separando la palabra "expectation" y el nombre de la distribución. Si se desea obtener una muestra de la distribución, se debe pasar el nombre de la distribución.
 
     Retorno:
@@ -74,8 +74,7 @@ def get_edge_cost(
     # stochastic cost sample from lognormal distribution
     if "expectation" in distribution:
         # get the expected speed and calculate the expected time given the edge length
-        time = expected_time(edge_length, edge_speed,
-                             distribution.split("-")[1])
+        time = expected_time(edge_length, edge_speed, distribution.split("-")[1])
 
     else:
         # generate a sample of the speed and calculate the time given the edge length
@@ -85,7 +84,7 @@ def get_edge_cost(
     return stochastic_cost
 
 
-def get_cumulative_edges_cost(graph: nx.Graph, policy: dict, source: Any, target: Any) -> float:
+def get_cumulative_edges_cost(graph: nx.Graph, policy: dict, source: Any, target: Any, distribution: str = "expectation-lognormal") -> float:
     """
     Retorna el costo acumulado de comenzar en el nodo 'source' y llegar al nodo 'target' siguiendo la política 'policy'
 
@@ -108,7 +107,8 @@ def get_cumulative_edges_cost(graph: nx.Graph, policy: dict, source: Any, target
     # Calcular el costo acumulado del camino más corto
     cost = 0
     for index in range(len(path) - 1):
-        cost += get_edge_cost(graph, path[index], path[index + 1])
+        cost += get_edge_cost(graph, path[index],
+                              path[index + 1], distribution=distribution)
     return cost
 
 
