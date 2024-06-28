@@ -103,3 +103,7 @@ if __name__ == "__main__":
 
     # Imprimir el resultado
     print(json_q_star)
+    
+    # Guardar en un archivo
+    with open("q_star.json", "w") as f:
+        f.write(json_q_star)
