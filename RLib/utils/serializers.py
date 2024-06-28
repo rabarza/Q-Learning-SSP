@@ -1,6 +1,9 @@
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 import json
 import networkx as nx
-from .table_utils import resta_diccionarios
+from RLib.utils.tables import resta_diccionarios
 
 
 def serialize_table(table):
