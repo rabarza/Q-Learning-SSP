@@ -7,8 +7,8 @@ import streamlit as st
 import os
 import json
 from city.app_graph import CityGraphPlotter, QUERIE_PARAMS
-from RLib.utils.file_utils import load_model_results, find_files_by_keyword
-from RLib.utils.plot_utils import plot_results_per_episode_comp_plotly
+from RLib.utils.files import load_model_results, find_files_by_keyword
+from RLib.utils.plots import plot_results_per_episode_comp_plotly
 from RLib.utils.serializers import QAgentSSPSerializer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -1,8 +1,15 @@
-import random
-from itertools import cycle
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
+from typing import List
 import numpy as np
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+from itertools import cycle
+import random
+from RLib.agents.ssp import QAgentSSP
+import sys
+import os
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../..')))
+
 # ================= Comparación de modelos =================
 
 # ======================= Get label =======================
@@ -115,21 +122,22 @@ def plot_results_per_episode_comp(
 
 
 # Función para generar colores aleatorios
-def get_color():
+def get_random_color():
     return "#" + "".join([random.choice("0123456789ABCDEF") for j in range(6)])
 
 
 def group_by_keyword(lista, keyword):
     grupos = {}
     for agente in lista:
-        clave = getattr(agente, keyword)  # Obtener el valor de la keyword del agente
+        # Obtener el valor de la keyword del agente
+        clave = getattr(agente, keyword)
         if clave not in grupos:
             grupos[clave] = []
         grupos[clave].append(agente)
     return grupos.items()
 
 
-def get_color_by_strategy(strategy):
+def get_color_by_strategy(strategy: str):
     colors = {"e-greedy": "#FF0000", "UCB1": "#FF00FF", "exp3": "#00FF00"}
 
     if strategy in ["softmax"]:
@@ -140,6 +148,8 @@ def get_color_by_strategy(strategy):
         return colors["e-greedy"]
     elif strategy in ["UCB1"]:
         return colors["UCB1"]
+    else:
+        return get_random_color()
 
 
 def ajustar_intensidad_color(color, intensity_factor):
@@ -156,10 +166,10 @@ def ajustar_intensidad_color(color, intensity_factor):
 
 
 def plot_results_per_episode_comp_plotly(
-    lista, criteria="avg score", add_label=True, compare_best=False
+    lista: List[QAgentSSP], criteria: str = "avg score", add_label: bool = True, compare_best: bool = False
 ):
     '''Genera un gráfico de comparación de resultados por episodio utilizando Plotly.
-    
+
     Parameters
     ----------
     lista : list
@@ -170,49 +180,45 @@ def plot_results_per_episode_comp_plotly(
         Indica si se añade una etiqueta a cada línea del gráfico.
     compare_best : bool
         Indica si se compara con los mejores resultados obtenidos por cada agente.
-        
+
     Returns
     -------
     fig : plotly.graph_objects.Figure
         Gráfico de comparación de resultados por episodio.
     '''
-    
+
     fig = go.Figure()
+
+    criteria_mapping = {
+        "steps": ("steps", "steps_best"),
+        "score": ("scores", "scores_best"),
+        "avg score": ("avg_scores", "avg_scores_best"),
+        "error": ("max_norm_error", None),
+        "policy error": ("max_norm_error_shortest_path", None),
+        "regret": ("regret", None),
+        "average regret": ("average_regret", None),
+    }
+
+    if criteria not in criteria_mapping:
+        raise ValueError("Invalid comparison criteria")
+
+    values_attr, values_best_attr = criteria_mapping[criteria]
+    criteria_name = "Shortest Path Error" if criteria == "policy error" else criteria.capitalize()
 
     for estrategia, agentes in group_by_keyword(lista, "strategy"):
         try:
             color_base = get_color_by_strategy(estrategia)
         except KeyError:
-            color_base = get_color()
+            color_base = get_random_color()
 
         for idx, model in enumerate(agentes):
             # Ajustar la intensidad del color para cada línea dentro del grupo
-            color_actual = ajustar_intensidad_color(
-                color_base, 1 - 0.05 * idx
-            )  # Ajusta los factores de saturación y luminosidad según el índice del agente
+            color_actual = ajustar_intensidad_color(color_base, 1 - 0.05 * idx)
 
+            values = getattr(model, values_attr)
+            values_best = getattr(
+                model, values_best_attr) if values_best_attr and compare_best else None
             episodes = model.num_episodes
-            criteria_name = criteria.capitalize()
-            if criteria == "steps":
-                values = model.steps
-                values_best = model.steps_best
-            elif criteria == "score":
-                values = model.scores
-                values_best = model.scores_best
-            elif criteria == "avg score":
-                values = model.avg_scores
-                values_best = model.avg_scores_best
-            elif criteria == "error":
-                values = model.max_norm_error
-            elif criteria == "policy error":
-                criteria_name = "Shortest Path Error"
-                values = model.max_norm_error_shortest_path
-            elif criteria == "regret":
-                values = model.regret
-            elif criteria == "average regret":
-                values = model.average_regret
-            else:
-                raise ValueError("Invalid comparison criteria")
 
             label = get_label(model) if add_label else None
 
@@ -221,10 +227,6 @@ def plot_results_per_episode_comp_plotly(
                 iterations = list(range(0, episodes, 10000))
             else:
                 iterations = list(range(episodes))
-
-            # Ajustar la longitud de episodes para que coincida con los valores reducidos de values
-            # episodes = episodes[:len(values)]
-            # print(iterations, len(values))
 
             fig.add_trace(
                 go.Scattergl(
@@ -236,11 +238,11 @@ def plot_results_per_episode_comp_plotly(
                 )
             )
 
-            if compare_best:
+            if values_best is not None:
                 values_best = values_best[::10]
                 fig.add_trace(
                     go.Scattergl(
-                        x=episodes,
+                        x=iterations,
                         y=values_best,
                         mode="lines",
                         name=label + " (Best)",
@@ -253,5 +255,88 @@ def plot_results_per_episode_comp_plotly(
         yaxis_title=criteria_name,
         title=dict(text="Comparación de Resultados por Episodio"),
     )
+
+    return fig
+
+
+def plot_results_per_episode_comp_matplotlib(
+    lista: List[QAgentSSP], criteria: str = "avg score", add_label: bool = True, compare_best: bool = False, dpi: int = 150
+):
+    '''Genera un gráfico de comparación de resultados por episodio utilizando Matplotlib.
+
+    Parameters
+    ----------
+    lista : list
+        Lista de agentes QLearningAgent.
+    criteria : str
+        Criterio de comparación entre los agentes. Puede ser 'steps', 'score', 'avg score', 'error', 'policy error' o 'regret'.
+    add_label : bool
+        Indica si se añade una etiqueta a cada línea del gráfico.
+    compare_best : bool
+        Indica si se compara con los mejores resultados obtenidos por cada agente.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Gráfico de comparación de resultados por episodio.
+    '''
+
+    fig = plt.figure(dpi=dpi)
+    ax = plt.gca()  # Obtener el eje actual
+
+    criteria_mapping = {
+        "steps": ("steps", "steps_best"),
+        "score": ("scores", "scores_best"),
+        "avg score": ("avg_scores", "avg_scores_best"),
+        "error": ("max_norm_error", None),
+        "policy error": ("max_norm_error_shortest_path", None),
+        "regret": ("regret", None),
+        "average regret": ("average_regret", None),
+    }
+
+    if criteria not in criteria_mapping:
+        raise ValueError("Invalid comparison criteria")
+
+    values_attr, values_best_attr = criteria_mapping[criteria]
+    criteria_name = "Shortest Path Error" if criteria == "policy error" else criteria.capitalize()
+
+    for estrategia, agentes in group_by_keyword(lista, "strategy"):
+        try:
+            color_base = get_color_by_strategy(estrategia)
+        except KeyError:
+            color_base = get_random_color()
+
+        for idx, model in enumerate(agentes):
+            # Ajustar la intensidad del color para cada línea dentro del grupo
+            color_actual = ajustar_intensidad_color(color_base, 1 - 0.05 * idx)
+
+            values = getattr(model, values_attr)
+            values_best = getattr(
+                model, values_best_attr) if values_best_attr and compare_best else None
+            episodes = model.num_episodes
+
+            label = get_label(model) if add_label else None
+
+            if episodes > 600000:
+                values = values[::10000]
+                iterations = list(range(0, episodes, 10000))
+            else:
+                iterations = list(range(episodes))
+
+            ax.plot(iterations, values, label=label, color=color_actual)
+
+            if values_best is not None:
+                values_best = values_best[::10]
+                ax.plot(iterations, values_best, label=label +
+                        " (Best)", color=color_actual, linestyle='--')
+
+    ax.set_xlabel("Episodios")
+    ax.set_ylabel(criteria_name)
+    ax.set_title("Comparación de Resultados por Episodio")
+
+    if add_label:
+        ax.legend()
+
+    plt.show()
 
     return fig

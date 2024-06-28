@@ -3,18 +3,18 @@ import networkx as nx
 import time
 from RLib.environments.ssp import SSPEnv
 from RLib.agents.ssp import QAgentSSP
-from RLib.utils.dijkstra_utils import (
+from RLib.utils.dijkstra import (
     dijkstra_shortest_path,
     get_path_as_stateactions_dict,
     get_qtable_for_semipolicy,
 )
-from RLib.utils.table_utils import (
+from RLib.utils.tables import (
     dict_states_actions_zeros,
     resta_diccionarios,
     max_norm,
     max_value_in_dict,
 )
-from RLib.utils.file_utils import save_model_results, load_model_results
+from RLib.utils.files import save_model_results, load_model_results
 
 
 # Crear un grafo dirigido

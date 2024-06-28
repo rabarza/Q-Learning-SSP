@@ -27,7 +27,7 @@ def save_model_results(objeto, nombre="", path="results"):
     # Formatear la fecha y hora como una cadena
     fecha_hora_str = fecha_hora_actual.strftime("%Y-%m-%d_%H-%M-%S")
     # Crear el nombre del archivo con la fecha y hora
-    nombre_archivo = f"{nombre}_{objeto.strategy}_{objeto.num_episodes}_{objeto.alpha}_{objeto.alpha}_{objeto.distribution}_{fecha_hora_str}.pickle"
+    nombre_archivo = f"{nombre}_{objeto.strategy}_{objeto.num_episodes}_{objeto.alpha}_{objeto.alpha}_{objeto.env.costs_distribution}_{fecha_hora_str}.pickle"
 
     # Combinar el nombre del archivo con la ruta de la carpeta "results"
     ruta_archivo = os.path.join(path, nombre_archivo)

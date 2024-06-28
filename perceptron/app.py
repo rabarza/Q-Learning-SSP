@@ -22,15 +22,15 @@ from train.actions import get_action_selector
 # TRAIN library
 from RLib.environments.ssp import SSPEnv
 from RLib.agents.ssp import QAgentSSP
-from RLib.utils.dijkstra_utils import (
+from RLib.utils.dijkstra import (
     get_optimal_policy,
     get_shortest_path_from_policy,
     get_q_table_for_policy,
 )
 
-from RLib.utils.file_utils import save_model_results
-from RLib.utils.file_utils import load_model_results, find_files_by_keyword
-from RLib.utils.plot_utils import plot_results_per_episode_comp_plotly
+from RLib.utils.files import save_model_results
+from RLib.utils.files import load_model_results, find_files_by_keyword
+from RLib.utils.plots import plot_results_per_episode_comp_plotly
 
 # Importar serializadores
 from RLib.utils.serializers import QAgentSSPSerializer

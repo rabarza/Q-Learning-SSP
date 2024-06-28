@@ -14,3 +14,5 @@ results/
 results2/
 # Build networks
 networks/
+# Json files
+*.json

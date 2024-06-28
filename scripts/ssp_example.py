@@ -4,14 +4,14 @@ import numpy as np
 import time
 from RLib.environments.ssp import SSPEnv
 from RLib.agents.ssp import QAgentSSP
-from RLib.utils.dijkstra_utils import (
+from RLib.utils.dijkstra import (
     dijkstra_shortest_path,
     get_path_as_stateactions_dict,
     get_qtable_for_semipolicy,
 )
-from RLib.utils.table_utils import max_norm
-from RLib.utils.file_utils import save_model_results, download_graph
-from RLib.utils.table_utils import resta_diccionarios
+from RLib.utils.tables import max_norm
+from RLib.utils.files import save_model_results, download_graph
+from RLib.utils.tables import resta_diccionarios
 
 
 # # Aplicación del algoritmo Q-Learning para encontrar el camino más corto entre dos puntos de la ciudad de Santiago

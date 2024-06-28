@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import copy
 from tqdm import tqdm
-from RLib.utils.dijkstra_utils import max_norm, exploitation
+from RLib.utils.dijkstra import max_norm, exploitation
 
 
 class Q_maze:

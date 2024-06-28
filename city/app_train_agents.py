@@ -11,12 +11,12 @@ from train.actions import get_action_selector
 
 from RLib.environments.ssp import SSPEnv
 from RLib.agents.ssp import QAgentSSP
-from RLib.utils.dijkstra_utils import (
+from RLib.utils.dijkstra import (
     get_optimal_policy,
     get_shortest_path_from_policy,
     get_q_table_for_policy,
 )
-from RLib.utils.file_utils import save_model_results
+from RLib.utils.files import save_model_results
 from RLib.utils.serializers import serialize_table
 from RLib.action_selection.action_selector import (
     EpsilonGreedyActionSelector,
