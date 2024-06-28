@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-from RLib.utils.table_utils import max_q_table, max_norm, exploitation
+from RLib.environments.ssp import SSPEnv
+from RLib.utils.tables import max_q_table, max_norm, exploitation
 from RLib.action_selection.action_selector import EpsilonGreedyActionSelector
 from stqdm import stqdm
 from tqdm import tqdm
@@ -72,10 +73,20 @@ class QAgent:
         alpha = self.alpha
         if not self.dynamic_alpha:
             return alpha
-        # Realizar conteo de visitas al par estado-acción
-        t = self.times_actions[state][action]
         # Reemplazar N(s,a) por t en la fórmula de alpha
-        formula = self.alpha_formula.replace("N(s,a)", "t")
+        if "N(s,a)" in self.alpha_formula:
+            # Realizar conteo de visitas al par estado-acción
+            t = self.times_actions[state][action]
+            formula = self.alpha_formula.replace("N(s,a)", "t")
+        elif "N(s)" in self.alpha_formula:
+            # Realizar conteo de visitas al estado
+            t = max(self.times_states[state], 1)
+            formula = self.alpha_formula.replace("N(s)", "t")
+        elif "t" in self.alpha_formula:
+            t = self.actual_episode + 1
+            formula = self.alpha_formula
+        else:
+            formula = self.alpha_formula
         # Evaluar la fórmula de alpha dinámico con el valor de t
         alpha_value = eval(formula)
         return alpha_value
@@ -103,7 +114,7 @@ class QAgentSSP(QAgent):
 
     def __init__(
         self,
-        environment,
+        environment: SSPEnv,
         alpha=0.01,
         gamma=1,
         dynamic_alpha=False,
@@ -277,7 +288,7 @@ class QAgentSSP(QAgent):
 
             # Mostrar información de la ejecución
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error path: {max_norm_error_shortest_path:.3f}\n"
-            stqdm.write(message) if st else tqdm.write(message)
+            stqdm.write(message) if st else tqdm.write(message) # Mostrar información en streamlit o en consola
 
     def best_path(self, state=None):
         """Devuelve el mejor camino desde un estado inicial hasta el estado terminal
@@ -306,7 +317,7 @@ class QAgentSSP(QAgent):
 if __name__ == "__main__":
     from RLib.environments.ssp import SSPEnv
     from RLib.graphs.perceptron import create_perceptron_graph, plot_network_graph
-    from RLib.utils.dijkstra_utils import get_optimal_policy, get_q_table_for_policy, get_shortest_path_from_policy
+    from RLib.utils.dijkstra import get_optimal_policy, get_q_table_for_policy, get_shortest_path_from_policy
 
     # Crear el grafo y el entorno
     graph = create_perceptron_graph([1, 20, 1], 100, 2000)
