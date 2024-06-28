@@ -35,6 +35,15 @@ G = ox.graph_from_place(location_name, network_type="drive")
 # Añadir el atributo de velocidad a las aristas (speed_kph)
 G = ox.add_edge_speeds(G)
 G.to_directed()
+# Define la longitud mínima (en metros, por ejemplo)
+min_length = 3
+
+# Filtrar los bordes que cumplen con el criterio de longitud mínima
+edges_to_remove = [(u, v) for u, v, data in G.edges(data=True) if data.get('length', 0) < min_length]
+
+# Utiliza la función remove_edges de osmnx para eliminar los bordes
+G.remove_edges_from(edges_to_remove)
+
 G = ox.truncate.largest_component(
     G, strongly=True
 )  # Obtener el componente fuertemente conexo más grande
@@ -58,7 +67,7 @@ shortest_path = get_shortest_path_from_policy(
 # Obtener la tabla Q* a partir de las políticas óptimas
 optimal_q_table = get_q_table_for_policy(
     G, optimal_policy, dest_node, distribution, False)
-# optimal_q_table_for_sp = get_q_table_for_path(optimal_q_table, shortest_path)
+optimal_q_table_for_sp = get_q_table_for_path(optimal_q_table, shortest_path)
 
 
 # Serializar q_star
@@ -94,13 +103,13 @@ alpha_type_dict = {"constante": "constant_alpha",
                    "dinámico": "dynamic_alpha"}
 
 agents = []
-dynamic_alpha = True
+dynamic_alpha = False
 strategies = list(selectors.keys())
 for strategy in strategies:
     # Crear el agente
     agent = QAgentSSP(env,
                       dynamic_alpha=dynamic_alpha,
-                      alpha_formula="1 / sqrt(t)",
+                      alpha_formula="0.1",
                       action_selector=selectors[strategy]
                       )
     # Entrenar el agente

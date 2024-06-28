@@ -1,27 +1,38 @@
-import osmnx as ox
-import networkx as nx
-import time
-from RLib.environments.ssp import SSPEnv
-from RLib.agents.ssp import QAgentSSP
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))  # noqa: E402
+from RLib.action_selection.action_selector import (
+    EpsilonGreedyActionSelector,
+    DynamicEpsilonGreedyActionSelector,
+    UCB1ActionSelector,
+    Exp3ActionSelector,
+)
+from RLib.utils.tables import dict_states_actions_zeros
+from RLib.utils.files import download_graph, save_model_results
+from RLib.utils.serializers import serialize_table
 from RLib.utils.dijkstra import (
-    dijkstra_shortest_path,
-    get_path_as_stateactions_dict,
-    get_qtable_for_semipolicy,
+    get_optimal_policy,
+    get_shortest_path_from_policy,
+    get_q_table_for_policy,
+    get_q_table_for_path,
+    
 )
-from RLib.utils.tables import (
-    dict_states_actions_zeros,
-    resta_diccionarios,
-    max_norm,
-    max_value_in_dict,
-)
-from RLib.utils.files import save_model_results, load_model_results
+from RLib.agents.ssp import QAgentSSP
+from RLib.environments.ssp import SSPEnv
+import numpy as np
+import networkx as nx
+import osmnx as ox
+import winsound  # Para hacer sonar un beep al finalizar el entrenamiento
+import json
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
 # Crear un grafo dirigido
 grafo = nx.DiGraph()
 
 # Agregar nodos al grafo
-nodos = [1, 2, 3, 4, 5, 6]
+nodos = [1, 2, 3, 4, 5]
 grafo.add_nodes_from(nodos)
 
 # aristas y sus atributo de longitud
