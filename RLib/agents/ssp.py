@@ -163,7 +163,7 @@ class QAgentSSP(QAgent):
         self.times_states = self.env.dict_states_zeros()
         # Se inicializa la matriz Q(s,a) con valores aleatorios
         # self.q_table = self.env.dict_states_actions_zeros()
-        self.q_table = self.env.dict_states_actions_negative(constant=200)
+        self.q_table = self.env.dict_states_actions_constant(constant=200)
         self.id = id(self)
 
     def __str__(self):

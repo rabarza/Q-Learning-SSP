@@ -11,7 +11,7 @@ from RLib.distributions.distributions import (
     random_time,
 )
 
-from RLib.utils.tables import dict_states_actions_zeros, dict_states_zeros, dict_states_actions_negative
+from RLib.utils.tables import dict_states_actions_zeros, dict_states_zeros, dict_states_actions_constant
 
 ##############################################################################################################
 # Stochastic Shortest Path
@@ -241,11 +241,11 @@ class SSPEnv:
         """Crear un diccionario con estados y acciones con valores 0"""
         return dict_states_actions_zeros(self.graph)
 
-    def dict_states_actions_negative(self, constant) -> Dict[str, Dict[str, float]]:
-        table = dict_states_actions_negative(self.graph, constant)
+    def dict_states_actions_constant(self, constant) -> Dict[str, Dict[str, float]]:
+        table = dict_states_actions_constant(self.graph, constant)
         table[self.terminal_state] = {self.terminal_state: 0}
         return table
-
+    
     def dict_states_zeros(self) -> Dict[str, float]:
         """Crear un diccionario con estados con valores 0"""
         return dict_states_zeros(self.graph)

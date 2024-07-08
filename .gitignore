@@ -4,7 +4,7 @@ __pycache__/
 # Environment variable file
 env/
 # Results of the tests and cache
-scripts/
+scripts/**.py
 results/
 cache/
 # Jupyter notebooks

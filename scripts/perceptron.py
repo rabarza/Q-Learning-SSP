@@ -3,27 +3,20 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))  # noqa: E402
 from RLib.action_selection.action_selector import (
     EpsilonGreedyActionSelector,
-    DynamicEpsilonGreedyActionSelector,
     UCB1ActionSelector,
     Exp3ActionSelector,
 )
+from RLib.utils.plots import plot_results_per_episode_comp_plotly
 from RLib.utils.tables import dict_states_actions_zeros
-from RLib.utils.files import download_graph, save_model_results
-from RLib.utils.serializers import serialize_table
+from RLib.utils.files import save_model_results
 from RLib.utils.dijkstra import (
     get_optimal_policy,
     get_shortest_path_from_policy,
     get_q_table_for_policy,
-    get_q_table_for_path,
 )
 from RLib.graphs.perceptron import create_perceptron_graph
 from RLib.agents.ssp import QAgentSSP
 from RLib.environments.ssp import SSPEnv
-import numpy as np
-import networkx as nx
-import osmnx as ox
-import winsound  # Para hacer sonar un beep al finalizar el entrenamiento
-import json
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
@@ -65,17 +58,20 @@ agent3.train(num_episodes, shortest_path=shortest_path, q_star=optimal_q_table)
 
 # Guardar los resultados
 alpha_type = "dynamic" if is_dynamic else "constant"
-for agent in [agent1, agent2, agent3]:
+agents_list = [agent1, agent2, agent3]
+for agent in agents_list:
     agent_storage_path = os.path.join(
         RESULTS_DIR,
         f"Perceptron {len(nodes_by_layer)}Layers-{graph.number_of_nodes()}Nodes/{costs_distribution}/{alpha_type}_alpha/{agent.strategy}/",
     )
 
-    # Si no existe la carpeta, crearla
-    if not os.path.exists(agent_storage_path):
-        os.makedirs(agent_storage_path)
-
     # Guardar resultados
     save_model_results(
-        agent, nombre=f"QAgentSSP", path=agent_storage_path
+        agent, results_path=agent_storage_path
     )
+
+plot_results_per_episode_comp_plotly(agents_list, criteria='error').show()
+plot_results_per_episode_comp_plotly(agents_list, criteria='policy error').show()
+plot_results_per_episode_comp_plotly(agents_list, criteria='steps').show()
+plot_results_per_episode_comp_plotly(agents_list, criteria='regret').show()
+plot_results_per_episode_comp_plotly(agents_list, criteria='average regret').show()
