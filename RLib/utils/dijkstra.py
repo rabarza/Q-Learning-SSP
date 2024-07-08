@@ -160,6 +160,8 @@ def get_optimal_policy(grafo, dest_node, distribution="lognormal"):
     policies: dict
         diccionario con las política óptima para cada nodo del grafo. Tiene la forma {nodo: política, ..., nodo: política}
     """
+    if "expectation" in distribution:
+        distribution = distribution.split("-")[1]
     # Iniciliazar el conjunto de nodos visitados
     visited_nodes = set()
     # Inicializar el conjunto de nodos restantes
@@ -211,7 +213,7 @@ def get_qtable_for_semipolicy(graph, policy, dest):
     return q_table
 
 
-def get_q_table_for_policy(graph, policy, dest_node, distribution, st=True):
+def get_q_table_for_policy(graph, policy, dest_node, distribution, st=False):
     """Dado un grafo, una política óptima y un nodo de destino, se calcula la tabla Q óptima para la política óptima
     Tiene la forma {estado: {accion: valor, ..., accion: valor}, ..., estado: {accion: valor, ..., accion: valor}}
     """
@@ -248,6 +250,7 @@ def get_q_table_for_policy(graph, policy, dest_node, distribution, st=True):
                     get_cumulative_edges_cost(
                         graph, policy, action, dest_node, distribution="expectation-"+distribution)
                 )
+    q_star[dest_node][dest_node] = 0
     return q_star
 
 
