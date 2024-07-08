@@ -21,7 +21,7 @@ def dict_states_actions_random(graph):
             for state, actions in nx.to_dict_of_lists(graph).items()
         }
 
-def dict_states_actions_negative(graph, constant):
+def dict_states_actions_constant(graph, constant):
         """Retorna un diccionario con los estados y acciones con valor aleatorio. Es útil para inicializar la tabla Q, o la tabla de la cantidad de veces que se ha visitado cada par estado-acción. Tiene la forma {estado: {accion: valor_aleatorio, ..., accion: valor_aleatorio}, ..., estado: {accion: valor_aleatorio, ..., accion: valor_aleatorio}}"""
         return {
             state: {action: constant for action in actions}
