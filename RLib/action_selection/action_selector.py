@@ -92,7 +92,7 @@ class UCB1ActionSelector(ActionSelector):
         c: parámetro de exploración
         """
         self.c = c
-        self.strategy = "UCB1"
+        self.strategy = f"UCB1"
         return locals()
 
     def select_action(self, agent, state):
@@ -115,12 +115,56 @@ class UCB1ActionSelector(ActionSelector):
             # Obtener los valores de q para cada acción a partir del estado s
             q_state = np.array(list(agent.q_table[state].values()))
             # Calcular el valor de los estimadores de q utilizando la estrategia UCB
-            ucb = q_state + \
-                np.sqrt(c * np.log(agent.times_states[state]) / times_actions)
+            t = agent.times_states[state]
+            ucb = q_state + c * np.sqrt(np.log(t) / times_actions)
             # Seleccionar acción
-            action_idxs = np.where(ucb == np.max(ucb))[0]
-            action_idx = np.random.choice(action_idxs)
-            action = list(agent.q_table[state].keys())[action_idx]
+            argmax_action_idx = np.argmax(ucb)
+            action = list(agent.q_table[state].keys())[argmax_action_idx]
+        # Devolver acción
+        return action
+
+    def get_label(self):
+        return f"c = {self.c}"
+
+
+class AsOptUCBActionSelector(ActionSelector):
+    """Asymptotically Optimal UCB action selector"""
+    @auto_super_init
+    def __init__(self, c=4):
+        """Parámetros
+        c: parámetro de exploración
+        """
+        self.c = c
+        self.strategy = f"AsOpt-UCB"
+        return locals()
+
+    def select_action(self, agent, state):
+        c = self.c
+        # Lista de acciones disponibles en el estado actual
+        actions = list(agent.q_table[state].keys())
+        # Contador de visitas para cada accion en el estado actual
+        times_actions = np.array(list(agent.times_actions[state].values()))
+        # Contar la cantidad de acciones que no han sido escogidas en el estado actual
+        not_chosen_actions_idx = np.where(times_actions == 0)[0]
+
+        if not_chosen_actions_idx.shape[0] > 0:
+            # Escoger una acción no visitada anteriormente de forma aleatoria
+            action_idx = np.random.choice(
+                not_chosen_actions_idx  # Ex: [0, 1, 2, 3]
+            )  # Se escoge el índice de la acción
+            action = list(agent.times_actions[state].keys())[
+                action_idx
+            ]  # Se obtiene la acción a partir del índice
+        else:
+            # Obtener los valores de q para cada acción a partir del estado s
+            q_state = np.array(list(agent.q_table[state].values()))
+            # Calcular el valor de los estimadores de q utilizando la estrategia UCB
+            t = agent.times_states[state]
+            f_t = 1 + t * np.log(t)**2
+            ucb = q_state + c * np.sqrt(np.log(f_t) / times_actions)
+            # Seleccionar acción
+            argmax_action_idx = np.argmax(ucb)
+            action = list(agent.q_table[state].keys())[argmax_action_idx]
         # Devolver acción
         return action
 
