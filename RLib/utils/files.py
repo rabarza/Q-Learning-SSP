@@ -1,39 +1,69 @@
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))  # noqa: E402
 import pickle
-from datetime import datetime
 import osmnx as ox
+import json
+import inspect
+from datetime import datetime
+from RLib.utils.dijkstra import get_q_table_for_path
+from RLib.utils.serializers import serialize_table
 
 # ======================= Save and Load =======================
 
 
-def save_model_results(objeto, nombre="", path="results"):
+def save_model_results(agent, results_path=None):
     """
-    Guarda el objeto en un archivo usando pickle.
+    Guarda el agent en un archivo usando pickle, actualiza el storage_path del agent. Si la carpeta results_path no existe, la crea y guarda el archivo en ella.
+    Además, guarda la tabla
 
     Parameters
     ----------
-    objeto: object
-        objeto a guardar
-    name: str
-        nombre del archivo a guardar (opcional)
-    path: str
+    agent: object
+        agent a guardar
+    results_path: str
         ruta de la carpeta donde se guardará el archivo (por defecto es "results")
     """
-    # Verificar si la carpeta "results" existe, y si no, crearla
-    if not os.path.exists(path):
-        os.makedirs(path)
+    # Verificar si results_path es None, y si es así, establecer la ruta del archivo que llama a la función
+    if results_path is None:
+        caller_file = inspect.getfile(inspect.currentframe().f_back)
+        results_path = os.path.dirname(caller_file) # Carpeta del archivo que llama a la función
+        results_path = os.path.join(results_path, "results")  # Carpeta "results" en la carpeta del archivo que llama a la función
+        print(f"results_path: {results_path}")
+    if not os.path.exists(results_path):
+        os.makedirs(results_path)
     # Obtener la fecha y hora actual
     fecha_hora_actual = datetime.now()
     # Formatear la fecha y hora como una cadena
     fecha_hora_str = fecha_hora_actual.strftime("%Y-%m-%d_%H-%M-%S")
     # Crear el nombre del archivo con la fecha y hora
-    nombre_archivo = f"{nombre}_{objeto.strategy}_{objeto.num_episodes}_{objeto.alpha}_{objeto.alpha}_{objeto.env.costs_distribution}_{fecha_hora_str}.pickle"
-
+    agent_filename = f"QAgentSSP_{agent.strategy}_{agent.num_episodes}_{agent.alpha}_{agent.env.costs_distribution}_{fecha_hora_str}.pickle"
+    q_table_filename = f"QTable_{agent.strategy}_{agent.num_episodes}_{agent.alpha}_{agent.env.costs_distribution}_{fecha_hora_str}.json"
+    q_table_sp_filename = f"QTableSP_{agent.strategy}_{agent.num_episodes}_{agent.alpha}_{agent.env.costs_distribution}_{fecha_hora_str}.json"
     # Combinar el nombre del archivo con la ruta de la carpeta "results"
-    ruta_archivo = os.path.join(path, nombre_archivo)
-    # Guardar el objeto en el archivo usando pickle
-    with open(ruta_archivo, "wb") as archivo:
-        pickle.dump(objeto, archivo)
+    agent_storage_path = os.path.join(results_path, agent_filename)
+    q_table_storage_path = os.path.join(results_path, q_table_filename)
+    q_table_sp_storage_path = os.path.join(results_path, q_table_sp_filename)
+    # Obtener la tabla Q para el mejor camino
+    shortest_path = agent.shortest_path
+    q_table = agent.q_table
+    q_table_sp = get_q_table_for_path(
+        q_table, shortest_path)  # Q table for shortest path
+    # Serializar la tabla Q para el mejor camino
+    serialized_q_table = serialize_table(q_table)
+    serialized_q_table_sp = serialize_table(q_table_sp)
+
+    # Guardar el agent en el archivo usando pickle
+    with open(agent_storage_path, "wb") as archivo:
+        agent.storage_path = agent_storage_path
+        pickle.dump(agent, archivo)
+    # Guardar la tabla Q en el archivo JSON
+    with open(q_table_storage_path, "w") as archivo:
+        json.dump(serialized_q_table, archivo, indent=4)
+    # Guardar la tabla Q para el mejor camino en el archivo JSON
+    with open(q_table_sp_storage_path, "w") as archivo:
+        json.dump(serialized_q_table_sp, archivo, indent=4)
+    
 
 
 def load_model_results(nombre_archivo, ruta_carpeta="results"):
@@ -47,28 +77,29 @@ def load_model_results(nombre_archivo, ruta_carpeta="results"):
     """
     # Combinar el nombre del archivo con la ruta de la carpeta "results"
     ruta_archivo = os.path.join(ruta_carpeta, nombre_archivo)
-    
+
     try:
         # Cargar el objeto desde el archivo usando pickle
         with open(ruta_archivo, "rb") as archivo:
             objeto_cargado = pickle.load(archivo)
         return objeto_cargado
     except EOFError:
-        print(f"Error: El archivo {ruta_archivo} está vacío o no contiene datos válidos.")
+        print(
+            f"Error: El archivo {ruta_archivo} está vacío o no contiene datos válidos.")
         return None
 
 
 def find_files_by_keyword(keyword, ruta_carpeta):
     """
     Busca archivos en una carpeta que contengan una palabra clave y devuelve una lista con los nombres de los archivos encontrados.
-    
+
     Parameters
     ----------
     keyword: str
         palabra clave a buscar en los nombres de los archivos
     ruta_carpeta: str
         ruta de la carpeta donde se buscarán los archivos
-        
+
     Returns
     -------
     list
@@ -77,7 +108,7 @@ def find_files_by_keyword(keyword, ruta_carpeta):
     archivos_encontrados = [
         archivo
         for archivo in os.listdir(ruta_carpeta)
-        if os.path.isfile(os.path.join(ruta_carpeta, archivo)) and keyword in archivo
+        if os.path.isfile(os.path.join(ruta_carpeta, archivo)) and keyword in archivo and archivo.endswith(".pickle")
     ]
     return archivos_encontrados
 
