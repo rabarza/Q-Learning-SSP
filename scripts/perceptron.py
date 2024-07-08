@@ -32,18 +32,18 @@ RESULTS_DIR = os.path.join(BASE_DIR, "results")
 nodes_by_layer = [1, 2, 3, 2, 1]
 graph = create_perceptron_graph(nodes_by_layer, min_length=1, max_length=40)
 
-# Crear el entorno SSP
-from RLib.environments.ssp import SSPEnv
-
+# Definir el nodo de origen y el nodo objetivo
 origin_node = ('Entrada', 0)
 target_node = ('Salida', 0)
 costs_distribution = "normal"
-environment = SSPEnv(graph, origin_node, target_node, costs_distribution)
 
 # Encontrar la política óptima, el camino más corto y la tabla Q*
-policy = get_optimal_policy(environment.graph, target_node, costs_distribution)
-optimal_q_table = get_q_table_for_policy(environment.graph, policy, target_node, costs_distribution, st=False)
+policy = get_optimal_policy(graph, target_node, costs_distribution)
+optimal_q_table = get_q_table_for_policy(graph, policy, target_node, costs_distribution, st=False)
 shortest_path = get_shortest_path_from_policy(policy, origin_node, target_node)
+
+# Crear el entorno SSP
+environment = SSPEnv(graph, origin_node, target_node, costs_distribution, shortest_path)
 
 # Instanciar los selectores de acción
 ucb_selector = UCB1ActionSelector(c=4)

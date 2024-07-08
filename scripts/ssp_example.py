@@ -1,89 +1,109 @@
-import osmnx as ox
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))  # noqa: E402
 import networkx as nx
-import numpy as np
-import time
 from RLib.environments.ssp import SSPEnv
 from RLib.agents.ssp import QAgentSSP
-from RLib.utils.dijkstra import (
-    dijkstra_shortest_path,
-    get_path_as_stateactions_dict,
-    get_qtable_for_semipolicy,
+from RLib.utils.dijkstra import get_optimal_policy, get_q_table_for_policy, get_q_table_for_path, get_shortest_path_from_policy
+from RLib.utils.plots import plot_results_per_episode_comp_plotly
+from RLib.utils.files import save_model_results
+import numpy as np
+import json
+
+from RLib.action_selection.action_selector import (
+    EpsilonGreedyActionSelector,
+    DynamicEpsilonGreedyActionSelector,
+    UCB1ActionSelector,
+    Exp3ActionSelector,
+    AsOptUCBActionSelector,
 )
-from RLib.utils.tables import max_norm
-from RLib.utils.files import save_model_results, download_graph
-from RLib.utils.tables import resta_diccionarios
+
+# Definir la ubicación de los resultados
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
+GRAPH_NAME = "small_graph"
+# Crear un grafo simple
+G = nx.DiGraph()
+G.add_node(0)
+G.add_node(1)
+G.add_node(2)
+G.add_node(3)
+G.add_node(4)
+G.add_edge(0, 1, length=100, speed_kph=50)
+G.add_edge(1, 2, length=150, speed_kph=60)
+G.add_edge(2, 4, length=200, speed_kph=40)
+G.add_edge(0, 3, length=200, speed_kph=40)
+G.add_edge(3, 2, length=150, speed_kph=50)
+G.add_edge(3, 4, length=100, speed_kph=50)
+G.add_edge(4, 2, length=100, speed_kph=50)
 
 
-# # Aplicación del algoritmo Q-Learning para encontrar el camino más corto entre dos puntos de la ciudad de Santiago
-print("Descargando datos y creando el grafo...")
-G = download_graph(filepath="data/santiago_connected")
-if not nx.is_strongly_connected(G):
-    G = ox.utils_graph.get_largest_component(G, strongly=True)
+# Nodos de origen y destino
+orig_node = 0
+dest_node = 4
 
-assert nx.is_strongly_connected(G), "El grafo no es fuertemente conexo."
+distribution = "lognormal"  # "uniform" o "normal"
 
-# Añadir atributo de velocidad
-# G = ox.add_edge_speeds(G)
-# fig, ax = ox.plot_graph(G, node_color='r', node_size=1, save=True, filepath='graph.png')
-
-# # Nodos de origen y destino Comuna de Santiago, Chile (longitud, latitud)
-orig_node = ox.distance.nearest_nodes(G, X=-70.67278, Y=-33.47492)
-dest_node = ox.distance.nearest_nodes(G, X=-70.6451, Y=-33.4356)
-
-print(f"Nodo más cercano al punto de origen: {orig_node}")
-print(f"Nodo más cercano al punto de destino: {dest_node}")
-assert G.has_node(orig_node), "El nodo de origen no está en el grafo."
-assert G.has_node(dest_node), "El nodo de destino no está en el grafo."
-
-
-# Calcular el camino más corto desde el nodo de inicio al nodo de destino
-distancias, padres, shortest_path = dijkstra_shortest_path(
-    G, orig_node, dest_node, logNormalExpectation=True, get_shortest_path=True
+# Calcular la política óptima y la tabla Q^*
+policy = get_optimal_policy(G, dest_node, distribution=distribution)
+optimal_q_table = get_q_table_for_policy(
+    G, policy, dest_node, distribution=distribution)
+shortest_path = shortest_path = get_shortest_path_from_policy(
+    policy, orig_node, dest_node
 )
-# Obtener la política óptima a partir del camino más corto
-policy = get_path_as_stateactions_dict(shortest_path)
-# Obtener la tabla Q óptima a partir de la política óptima
-q_star = get_qtable_for_semipolicy(G, policy, dest_node)
+optimal_q_table_for_sp = get_q_table_for_path(optimal_q_table, shortest_path)
 
+# Serializar la tabla Q^*
+json_q_star = json.dumps(optimal_q_table, indent=4)
+json_q_star_for_sp = json.dumps(optimal_q_table_for_sp, indent=4)
 
-environment = SSPEnv(grafo=G, start_state=orig_node, terminal_state=dest_node)
-NUM_EPISODES = 15000
+# Guardar la tabla Q^* en un archivo
+if not os.path.exists(RESULTS_DIR):
+    os.makedirs(RESULTS_DIR)
+with open(os.path.join(RESULTS_DIR, "optimal_q_table.json"), "w") as f:
+    f.write(json_q_star)
+with open(os.path.join(RESULTS_DIR, "optimal_q_table_for_sp.json"), "w") as f:
+    f.write(json_q_star_for_sp)
 
-# epsilons = [0.1, 0.2, 0.3, 0.4, 0.5]
-# cs = [1, 2, 3, 4, 5]
-# methods = ['e-greedy', 'UCB1', 'exp3']
-methods = ["e-greedy"]
+# Configuración del entorno y del agente
+env = SSPEnv(G, orig_node, dest_node, distribution, shortest_path)
+agent = QAgentSSP(env, alpha_formula="0.1", action_selector=EpsilonGreedyActionSelector(epsilon=0.1))
+agent_ucb = QAgentSSP(env, alpha_formula="0.1", action_selector=UCB1ActionSelector(c=.001))
+agent_ao_ucb = QAgentSSP(env, alpha_formula="0.1", action_selector=AsOptUCBActionSelector())
+agent_exp3 = QAgentSSP(env, alpha_formula="0.1", action_selector=Exp3ActionSelector(eta="0.3"))
+NUM_EPISODES = 20000
 
-# methods = ['e-greedy', 'exp3']
-expressions = ["\log t", "\sqrt{t}"]
+# Entrenamiento del agente
+agent.train(NUM_EPISODES, shortest_path=shortest_path, q_star=optimal_q_table)
+agent_ucb.train(NUM_EPISODES, shortest_path=shortest_path, q_star=optimal_q_table)
+agent_ao_ucb.train(NUM_EPISODES, shortest_path=shortest_path, q_star=optimal_q_table)
+agent_exp3.train(NUM_EPISODES, shortest_path=shortest_path, q_star=optimal_q_table)
 
-for method in methods:
-    print(f"Comenzando entrenamiento con método {method}")
+list_agents = [agent, agent_ucb, agent_ao_ucb, agent_exp3]
+print("Camino más corto:", shortest_path)
+print("Tabla Q^* esperada:", optimal_q_table)
+print("Tabla Q aprendida por el agente:", agent.q_table)
+print("Política óptima:", policy)
 
-    # start_time = time.time()
-    # distribution = "expectation-lognormal"
-    # model = QAgentSSP(environment, strategy=method, epsilon=0.1, alpha=0.1, gamma=1)
-    # model.train(NUM_EPISODES, verbose=False, distribution=distribution, policy=policy, q_star=q_star)
-    # model.iteration_time = time.time() - start_time
-    # save_model_results(model)
+plot_results_per_episode_comp_plotly(list_agents, "error").show()
+plot_results_per_episode_comp_plotly(list_agents, "policy error").show()
+plot_results_per_episode_comp_plotly(list_agents, "average regret").show()
+plot_results_per_episode_comp_plotly(list_agents, "optimal paths").show()
+plot_results_per_episode_comp_plotly(list_agents, "score").show()
+plot_results_per_episode_comp_plotly(list_agents, "steps").show()
 
-    start_time = time.time()
-    distribution = "lognormal"
-    model = QAgentSSP(environment, strategy=method, epsilon=0.1, alpha=0.1, gamma=1)
-    model.train(
-        NUM_EPISODES,
-        verbose=False,
-        distribution=distribution,
-        policy=policy,
-        q_star=q_star,
+for agent in list_agents:
+    temp_path = f"{GRAPH_NAME}/{orig_node}-{dest_node}/dynamic_alpha/{agent.strategy}/"
+    results_dir = os.path.join(RESULTS_DIR, temp_path)
+
+    # Ruta para guardar resultados
+    agent_storage_path = os.path.join(
+        BASE_DIR,
+        "results/",
+        temp_path
     )
-    model.iteration_time = time.time() - start_time
-    save_model_results(model)
 
-    # ox.plot_graph_route(G, model.best_path(orig_node), node_size=0, edge_linewidth=0.5, figsize=(5,5), save=True, filepath=f"results/imgs/{distribution}/{method}_shortest_path.png")
-resta = resta_diccionarios(model.q_table, q_star)
-# print(resta)
-for estado, accion in policy.items():
-    print(
-        f"{(estado, accion)} {(model.q_table[estado][accion] - q_star[estado][accion])} {model.q_table[estado][accion]} {q_star[estado][accion]} "
+    # Guardar resultados
+    save_model_results(
+        agent, results_path=agent_storage_path
     )

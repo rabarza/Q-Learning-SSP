@@ -32,7 +32,7 @@ exp3_files = find_files_by_keyword("exp3", ruta_carpeta+"exp3")
 exp3_agents = list(map(lambda x: load_model_results(
     x, ruta_carpeta+"exp3"), exp3_files))
 
-criterias_list = ['error', 'policy error', 'score', 'steps']
+criterias_list = ['error', 'policy error', 'score', 'steps', 'optimal paths']
 
 for criteria in criterias_list:
     agents = greedy_agents + ucb_agents + exp3_agents
@@ -50,6 +50,6 @@ for criteria in criterias_list:
 #         q_table_for_sp = get_q_table_for_path(q_table, path)
 #         serialized_q_table_for_sp = serialize_table(q_table_for_sp)
 #         json_q_table_for_sp = json.dumps(serialized_q_table_for_sp, indent=4)
-#         with open(os.path.join(RESULTS_DIR, f"q_star_for_shortest_path_{city_name}_{orig_node}-{dest_node}_{agent.strategy}.json"), "w") as f:
+#         with open(os.path.join(RESULTS_DIR, f"q_star_for_shortest_path_{graph_name}_{orig_node}-{dest_node}_{agent.strategy}.json"), "w") as f:
 #             f.write(json_q_table_for_sp)
 #             f.close()

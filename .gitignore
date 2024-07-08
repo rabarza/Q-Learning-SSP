@@ -1,9 +1,10 @@
 __pycache__/
 # temporary files
-tempCodeRunnerFile.py
+**/tempCodeRunnerFile.py
 # Environment variable file
 env/
 # Results of the tests and cache
+scripts/
 results/
 cache/
 # Jupyter notebooks

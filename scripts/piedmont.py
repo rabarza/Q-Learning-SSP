@@ -35,14 +35,14 @@ G = ox.graph_from_place(location_name, network_type="drive")
 # Añadir el atributo de velocidad a las aristas (speed_kph)
 G = ox.add_edge_speeds(G)
 G.to_directed()
-# Define la longitud mínima (en metros, por ejemplo)
-min_length = 3
+# # Define la longitud mínima (en metros, por ejemplo)
+# min_length = 3
 
-# Filtrar los bordes que cumplen con el criterio de longitud mínima
-edges_to_remove = [(u, v) for u, v, data in G.edges(data=True) if data.get('length', 0) < min_length]
+# # Filtrar los bordes que cumplen con el criterio de longitud mínima
+# edges_to_remove = [(u, v) for u, v, data in G.edges(data=True) if data.get('length', 0) < min_length]
 
-# Utiliza la función remove_edges de osmnx para eliminar los bordes
-G.remove_edges_from(edges_to_remove)
+# # Utiliza la función remove_edges de osmnx para eliminar los bordes
+# G.remove_edges_from(edges_to_remove)
 
 G = ox.truncate.largest_component(
     G, strongly=True
@@ -77,72 +77,78 @@ serialized_opt_q_table_for_sp = serialize_table(optimal_q_table_for_sp)
 json_q_star = json.dumps(serialized_opt_q_table, indent=4)
 json_shortest_path = json.dumps(shortest_path, indent=4)
 json_q_star_for_sp = json.dumps(serialized_opt_q_table_for_sp, indent=4)
+
 # Guardar en un archivo
-with open(os.path.join(RESULTS_DIR, f"q_star_Piedmont_distr_{distribution}.json"), "w") as f:
+ruta_carpeta = f"{location_name}/{orig_node}-{dest_node}/"
+if not os.path.exists(os.path.join(RESULTS_DIR, ruta_carpeta)):
+    os.makedirs(os.path.join(RESULTS_DIR, ruta_carpeta))	
+with open(os.path.join(RESULTS_DIR, ruta_carpeta, f"optimal_q_table_distr_{distribution}.json"), "w") as f:
     f.write(json_q_star)
     f.write("\n")
     f.write(json_shortest_path)
     f.close()
-with open(os.path.join(RESULTS_DIR, f"q_star_for_shortest_path_Piedmont_distr_{distribution}.json"), "w") as f:
+with open(os.path.join(RESULTS_DIR, ruta_carpeta, f"optimal_q_table_for_sp_distr_{distribution}.json"), "w") as f:
     f.write(json_q_star_for_sp)
     f.close()
 
 NUM_EPISODES = 40000
 # Crear un entorno
-env = SSPEnv(G, orig_node, dest_node, distribution)
+env = SSPEnv(G, orig_node, dest_node, distribution, shortest_path)
 
-
-selectors = {
-    "e-greedy": EpsilonGreedyActionSelector(epsilon=0.1),
-    "UCB1": UCB1ActionSelector(c=2),
-    "exp3": Exp3ActionSelector(eta="log(t+1)"),
-}
 
 
 alpha_type_dict = {"constante": "constant_alpha",
                    "dinámico": "dynamic_alpha"}
 
 agents = []
-dynamic_alpha = False
-strategies = list(selectors.keys())
-for strategy in strategies:
-    # Crear el agente
-    agent = QAgentSSP(env,
-                      dynamic_alpha=dynamic_alpha,
-                      alpha_formula="0.1",
-                      action_selector=selectors[strategy]
-                      )
-    # Entrenar el agente
-    print(f"Training agent with strategy: {strategy}")
-    agent.train(
-        NUM_EPISODES,
-        shortest_path=shortest_path,
-        q_star=optimal_q_table,
-    )
-    agents.append(agent)
+dynamic_alpha = True
+c_values = np.linspace(0.0001, 0.1, 30)
+for c in c_values:
+    selectors = {
+        # "e-greedy": EpsilonGreedyActionSelector(epsilon=0.1),
+        "UCB1": UCB1ActionSelector(c=c),
+        # "exp3": Exp3ActionSelector(eta="log(t+1)"),
+    }
+    
+    strategies = list(selectors.keys())
+    for strategy in strategies:
+        # Crear el agente
+        agent = QAgentSSP(env,
+                        dynamic_alpha=dynamic_alpha,
+                        alpha_formula="1 / (t+1)",
+                        action_selector=selectors[strategy]
+                        )
+        # Entrenar el agente
+        print(f"Training agent with strategy: {strategy}")
+        agent.train(
+            NUM_EPISODES,
+            shortest_path=shortest_path,
+            q_star=optimal_q_table,
+        )
+        agents.append(agent)
 
-    for element in strategies:
-        for alpha_type in list(alpha_type_dict.values()):
-            temp_path = f"{location_name}/{orig_node}-{dest_node}/{alpha_type}/{element}/"
-            results_dir = os.path.join(RESULTS_DIR, temp_path)
-            # Si no existe la carpeta, crearla
-            if not os.path.exists(results_dir):
-                os.makedirs(results_dir)
+        for element in strategies:
+            for alpha_type in list(alpha_type_dict.values()):
+                temp_path = f"{location_name}/{orig_node}-{dest_node}/{alpha_type}/{element}/"
+                results_dir = os.path.join(RESULTS_DIR, temp_path)
+                # Si no existe la carpeta, crearla
+                if not os.path.exists(results_dir):
+                    os.makedirs(results_dir)
 
-    # Ruta para guardar resultados
-    agent_storage_path = os.path.join(
-        BASE_DIR,
-        "results/",
-        f"{location_name}/{orig_node}-{dest_node}/{alpha_type}/{strategy}/",
-    )
+        # Ruta para guardar resultados
+        agent_storage_path = os.path.join(
+            BASE_DIR,
+            "results/",
+            f"{location_name}/{orig_node}-{dest_node}/{alpha_type}/{strategy}/",
+        )
 
-    # Si no existe la carpeta, crearla
-    if not os.path.exists(agent_storage_path):
-        os.makedirs(agent_storage_path)
+        # Si no existe la carpeta, crearla
+        if not os.path.exists(agent_storage_path):
+            os.makedirs(agent_storage_path)
 
-    # Guardar resultados
-    save_model_results(
-        agent, nombre=f"QAgentSSP_", path=agent_storage_path
-    )
+        # Guardar resultados
+        save_model_results(
+            agent, nombre=f"QAgentSSP_", path=agent_storage_path
+        )
 
-winsound.Beep(2000, 4000)  # Beep con frecuencia de 1000 Hz durante 2 segundos
+    # winsound.Beep(2000, 4000)  # Beep con frecuencia de 1000 Hz durante 2 segundos
