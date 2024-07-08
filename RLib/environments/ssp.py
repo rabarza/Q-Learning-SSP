@@ -11,7 +11,7 @@ from RLib.distributions.distributions import (
     random_time,
 )
 
-from RLib.utils.tables import dict_states_actions_zeros, dict_states_zeros
+from RLib.utils.tables import dict_states_actions_zeros, dict_states_zeros, dict_states_actions_negative
 
 ##############################################################################################################
 # Stochastic Shortest Path
@@ -74,7 +74,8 @@ def get_edge_cost(
     # stochastic cost sample from lognormal distribution
     if "expectation" in distribution:
         # get the expected speed and calculate the expected time given the edge length
-        time = expected_time(edge_length, edge_speed, distribution.split("-")[1])
+        time = expected_time(edge_length, edge_speed,
+                             distribution.split("-")[1])
 
     else:
         # generate a sample of the speed and calculate the time given the edge length
@@ -117,7 +118,7 @@ class SSPEnv:
     Entorno de aprendizaje para el problema de encontrar el camino más corto en un grafo
     """
 
-    def __init__(self, graph: nx.Graph, start_state: Any, terminal_state: Any, costs_distribution: str = "lognormal"):
+    def __init__(self, graph: nx.Graph, start_state: Any, terminal_state: Any, costs_distribution: str = "lognormal", shortest_path: list = None):
         """Constructor de la clase SSPEnv. Inicializa el entorno de aprendizaje con el grafo, el estado inicial y el estado terminal. Notar que al nodo terminal se le agrega un arco recurrente con longitud 0.
 
         Parámetros:
@@ -151,6 +152,7 @@ class SSPEnv:
         self.__adjacency_dict_of_lists = nx.to_dict_of_lists(self.graph)
         self.__q_table = self.dict_states_actions_zeros()
         self.__costs_distribution = costs_distribution
+        self.__shortest_path = shortest_path
 
     def __str__(self):
         return f"EnvShortestPath {self.graph}"
@@ -179,6 +181,10 @@ class SSPEnv:
     def costs_distribution(self) -> str:
         return self.__costs_distribution
 
+    @property
+    def shortest_path(self) -> list:
+        return self.__shortest_path
+
     def reset(self):
         """Reiniciar el entorno de aprendizaje"""
         self.__current_state = self.__start_state
@@ -202,7 +208,7 @@ class SSPEnv:
         ), f"El estado {state} no está en el graph"
         return state == self.terminal_state
 
-    def take_action(self, state, action) -> Tuple[int, float, bool, Dict[str, Dict[str, object]]]:
+    def take_action(self, state, action) -> Tuple[int, float, bool, str]:
         """Tomar una acción en el entorno de aprendizaje
 
         Parámetros:
@@ -228,12 +234,17 @@ class SSPEnv:
         # La recompensa es negativa porque se busca maximizar la recompensa que representa minimizar el costo
         reward = - cost
         self.__current_state = next_state
-        info = {"estado": state, "recompensa": reward, "terminado": terminated}
+        info = str({"estado": state, "recompensa": reward, "terminado": terminated})
         return next_state, reward, terminated, info
 
     def dict_states_actions_zeros(self) -> Dict[str, Dict[str, float]]:
         """Crear un diccionario con estados y acciones con valores 0"""
         return dict_states_actions_zeros(self.graph)
+
+    def dict_states_actions_negative(self, constant) -> Dict[str, Dict[str, float]]:
+        table = dict_states_actions_negative(self.graph, constant)
+        table[self.terminal_state] = {self.terminal_state: 0}
+        return table
 
     def dict_states_zeros(self) -> Dict[str, float]:
         """Crear un diccionario con estados con valores 0"""
