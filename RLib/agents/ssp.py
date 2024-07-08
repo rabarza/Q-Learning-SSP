@@ -20,7 +20,8 @@ class QAgent:
     """
 
     def __init__(self):
-        pass
+        # ruta de almacenamiento de los resultados
+        self.storage_path = None
 
     def argmax_q_table(self, state):
         """
@@ -151,7 +152,7 @@ class QAgentSSP(QAgent):
         self.num_states = environment.num_states
         self.num_actions = environment.num_actions
         self.alpha = alpha
-        self.dynamic_alpha = dynamic_alpha
+        self.dynamic_alpha = True if dynamic_alpha or alpha_formula != "alpha" else False
         self.alpha_formula = alpha_formula
         self.gamma = gamma
         self.action_selector = action_selector
@@ -161,7 +162,8 @@ class QAgentSSP(QAgent):
         # Se cuenta la cantidad de veces que se visita un estado N(s)
         self.times_states = self.env.dict_states_zeros()
         # Se inicializa la matriz Q(s,a) con valores aleatorios
-        self.q_table = self.env.dict_states_actions_zeros()
+        # self.q_table = self.env.dict_states_actions_zeros()
+        self.q_table = self.env.dict_states_actions_negative(constant=200)
         self.id = id(self)
 
     def __str__(self):
@@ -205,6 +207,8 @@ class QAgentSSP(QAgent):
         self.avg_scores = np.zeros(num_episodes)
         self.regret = np.zeros(num_episodes)
         self.average_regret = np.zeros(num_episodes)
+        self.optimal_paths = np.zeros(num_episodes)
+        optimal_paths_count = 0
 
         self.q_star = q_star
 
@@ -231,9 +235,10 @@ class QAgentSSP(QAgent):
             done = False
             self.actual_episode = episode
             total_score = 0
-
+            path = []
             state = initial_state
             while not done:
+                path.append(state)
                 # Se realiza la transición (action, next_state, reward)
                 action = self.select_action(state)
                 alpha = self.get_alpha(state, action)
@@ -259,7 +264,11 @@ class QAgentSSP(QAgent):
                 total_score += reward
                 # Imprimir información de la ejecución
                 print(info) if verbose else None
-
+        
+            path.append(state)	# Agregar el estado terminal al camino
+            # Contar la cantidad de veces que se llegó al camino óptimo
+            if path == self.env.shortest_path:
+                optimal_paths_count += 1
             # Calcular el error de la norma máxima entre la tabla Q y la tabla Q*
             if q_star and shortest_path:
                 max_norm_error = max_norm(self.q_table, q_star)
@@ -285,6 +294,7 @@ class QAgentSSP(QAgent):
                 np.sum(self.scores[:episode+1])/max(episode, 1)
             self.regret[episode] = episode*optimal_cost - \
                 np.sum(self.scores[:episode+1])
+            self.optimal_paths[episode] = optimal_paths_count
 
             # Mostrar información de la ejecución
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error path: {max_norm_error_shortest_path:.3f}\n"
