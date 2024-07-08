@@ -100,6 +100,9 @@ def plot_results_per_episode_comp(
         elif criteria == "avg q_values":
             values = model.avg_q_values
             values_best = model.avg_q_values_best
+        elif criteria == "optimal paths":
+            values = model.optimal_paths
+            values_best = model.optimal_paths_best
         else:
             raise ValueError("Invalid comparison criteria")
 
@@ -138,7 +141,7 @@ def group_by_keyword(lista, keyword):
 
 
 def get_color_by_strategy(strategy: str):
-    colors = {"e-greedy": "#FF0000", "UCB1": "#FF00FF", "exp3": "#00FF00"}
+    colors = {"e-greedy": "#FF0000", "UCB1": "#0078d4", "exp3": "#00FF00"}
 
     if strategy in ["softmax"]:
         return colors["exp3"]
@@ -197,6 +200,7 @@ def plot_results_per_episode_comp_plotly(
         "policy error": ("max_norm_error_shortest_path", None),
         "regret": ("regret", None),
         "average regret": ("average_regret", None),
+        "optimal paths": ("optimal_paths", None),
     }
 
     if criteria not in criteria_mapping:
@@ -213,7 +217,7 @@ def plot_results_per_episode_comp_plotly(
 
         for idx, model in enumerate(agentes):
             # Ajustar la intensidad del color para cada línea dentro del grupo
-            color_actual = ajustar_intensidad_color(color_base, 1 - 0.05 * idx)
+            color_actual = ajustar_intensidad_color(color_base, 1 - 0.0005 * idx)
 
             values = getattr(model, values_attr)
             values_best = getattr(
