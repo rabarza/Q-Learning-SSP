@@ -27,8 +27,10 @@ def save_model_results(agent, results_path=None):
     # Verificar si results_path es None, y si es así, establecer la ruta del archivo que llama a la función
     if results_path is None:
         caller_file = inspect.getfile(inspect.currentframe().f_back)
-        results_path = os.path.dirname(caller_file) # Carpeta del archivo que llama a la función
-        results_path = os.path.join(results_path, "results")  # Carpeta "results" en la carpeta del archivo que llama a la función
+        # Carpeta del archivo que llama a la función
+        results_path = os.path.dirname(caller_file)
+        # Carpeta "results" en la carpeta del archivo que llama a la función
+        results_path = os.path.join(results_path, "results")
         print(f"results_path: {results_path}")
     if not os.path.exists(results_path):
         os.makedirs(results_path)
@@ -63,7 +65,6 @@ def save_model_results(agent, results_path=None):
     # Guardar la tabla Q para el mejor camino en el archivo JSON
     with open(q_table_sp_storage_path, "w") as archivo:
         json.dump(serialized_q_table_sp, archivo, indent=4)
-    
 
 
 def load_model_results(nombre_archivo, ruta_carpeta="results"):
@@ -146,3 +147,24 @@ def download_graph(
         ox.save_graphml(G, filepath)
         print("Grafo descargado y guardado.")
     return G
+
+
+def serialize_and_save_table(table, path, file_name):
+    """	Serializa la tabla y la guarda en un archivo JSON en la ruta especificada.
+    Parameters
+    ----------
+    table: dict
+        tabla a serializar
+    path: str
+        ruta de la carpeta donde se guardará el archivo
+    file_name: str
+        nombre del archivo
+    """
+
+    if not os.path.exists(path):
+        os.makedirs(path)
+    serialized_table = serialize_table(table)
+    json_table = json.dumps(serialized_table, indent=4)
+    with open(os.path.join(path, file_name), "w") as f:
+        f.write(json_table)
+        f.close()
