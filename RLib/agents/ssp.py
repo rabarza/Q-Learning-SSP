@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 from RLib.environments.ssp import SSPEnv
 from RLib.utils.tables import max_q_table, max_norm, exploitation
-from RLib.action_selection.action_selector import EpsilonGreedyActionSelector
+from RLib.action_selectors import EpsilonGreedyActionSelector
 from stqdm import stqdm
 from tqdm import tqdm
-from math import sqrt, log
+from math import sqrt, log # util para el calculo de la tasa de aprendizaje en eval
 import numpy as np
 import random
 import copy
@@ -162,8 +162,8 @@ class QAgentSSP(QAgent):
         # Se cuenta la cantidad de veces que se visita un estado N(s)
         self.times_states = self.env.dict_states_zeros()
         # Se inicializa la matriz Q(s,a) con valores aleatorios
-        # self.q_table = self.env.dict_states_actions_zeros()
-        self.q_table = self.env.dict_states_actions_constant(constant=200)
+        self.q_table = self.env.dict_states_actions_zeros()
+        # self.q_table = self.env.dict_states_actions_constant(constant=-15)
         self.id = id(self)
 
     def __str__(self):
