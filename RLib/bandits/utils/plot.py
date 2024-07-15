@@ -17,17 +17,8 @@ def plot_bandits_regret(bandits, criteria="regret"):
     for bandit in bandits:
         episodes = len(bandit.regret_history)
         iterations = list(range(episodes))
-        if criteria == "regret":
-            values = bandit.regret_history
-        elif criteria == "average regret":
-            values = bandit.average_regret_history
-        elif criteria == "pseudo regret":
-            values = bandit.pseudo_regret_history
-        elif criteria == "rewards":
-            values = bandit.rewards
-        elif criteria == "pulls":
-            values = bandit.arm_pulls
-            
+        selected_attribute = {"regret": "regret_history", "average regret": "average_regret_history", "pseudo regret": "pseudo_regret_history", "rewards": "rewards", "pulls": "arm_pulls"}
+        values = getattr(bandit, selected_attribute[criteria])          
             
         label = f'Bandit {bandit.strategy}'
         # Asignar un color diferente a cada bandit dependiendo de su estrategia (bandit.strategy)

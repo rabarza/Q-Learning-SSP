@@ -6,7 +6,7 @@ sys.path.append("../city")  # Agrega el directorio city al sys.path
 import os
 import streamlit as st
 
-from RLib.action_selection.action_selector import (
+from RLib.action_selectors import (
     EpsilonGreedyActionSelector,
     DynamicEpsilonGreedyActionSelector,
     UCB1ActionSelector,

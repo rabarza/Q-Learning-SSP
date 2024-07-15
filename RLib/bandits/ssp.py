@@ -7,7 +7,7 @@ import random
 import numpy as np
 from math import log, sqrt
 import networkx as nx
-from RLib.distributions.distributions import expected_time, random_time
+from RLib.cost_distributions import expected_time, random_time
 
 
 def find_all_paths(graph, start_node, end_node):
@@ -209,7 +209,7 @@ if __name__ == '__main__':
     # print("PYTHONPATH:", sys.path)
 
     from RLib.graphs.perceptron import create_perceptron_graph, plot_network_graph
-    from RLib.distributions.distributions import expected_time, random_time
+    from RLib.cost_distributions import expected_time, random_time
     from RLib.bandits.utils.plot import plot_bandits_regret
 
     # Create a perceptron graph
@@ -229,7 +229,7 @@ if __name__ == '__main__':
 
     bandits_list = []
     eta = "log(t+1)"
-    for i in range(5):
+    for i in range(1):
         # Crear el Multi-Armed Bandit
         bandit_eps = EGreedyMultiArmedBandit(path_costs)
         # Crear el UCB Multi-Armed Bandit
@@ -238,12 +238,13 @@ if __name__ == '__main__':
         bandit_exp3 = EXP3MultiArmedBandit(path_costs, eta=eta)
         # Crear el Boltzmann Multi-Armed Bandit
         bandit_boltz = BoltzmannBandit(path_costs, eta=eta)
-
+        
         # Realizar entrenamientos
-        train_bandit(bandit_eps, 50000, cost_distribution)
-        train_bandit(bandit_ucb, 50000, cost_distribution)
-        train_bandit(bandit_exp3, 50000, cost_distribution)
-        train_bandit(bandit_boltz, 50000, cost_distribution)
+        num_rounds = 500
+        train_bandit(bandit_eps, path_lengths, num_rounds, cost_distribution)
+        train_bandit(bandit_ucb, path_lengths, num_rounds, cost_distribution)
+        train_bandit(bandit_exp3, path_lengths, num_rounds, cost_distribution)
+        train_bandit(bandit_boltz, path_lengths, num_rounds, cost_distribution)
 
         bandits_list.append(bandit_eps)
         bandits_list.append(bandit_ucb)

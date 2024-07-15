@@ -18,7 +18,7 @@ from RLib.utils.dijkstra import (
 )
 from RLib.utils.files import save_model_results
 from RLib.utils.serializers import serialize_table
-from RLib.action_selection.action_selector import (
+from RLib.action_selectors import (
     EpsilonGreedyActionSelector,
     DynamicEpsilonGreedyActionSelector,
     UCB1ActionSelector,

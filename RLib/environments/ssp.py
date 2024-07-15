@@ -6,7 +6,7 @@ import osmnx as ox
 import copy
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from RLib.distributions.distributions import (
+from RLib.cost_distributions import (
     expected_time,
     random_time,
 )
