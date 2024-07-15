@@ -230,7 +230,7 @@ class SSPEnv:
         next_state = action
         cost = get_edge_cost(self.graph, state, next_state,
                              self.__costs_distribution)
-        terminated = self.check_state(next_state)
+        terminated = self.check_state(state)
         # La recompensa es negativa porque se busca maximizar la recompensa que representa minimizar el costo
         reward = - cost
         self.__current_state = next_state
