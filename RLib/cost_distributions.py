@@ -88,9 +88,9 @@ def lognormal_expected_time(arc_length, avg_speed=25):
 
     mu_speed = np.log((mu_x ** 2) / np.sqrt((mu_x ** 2 + sigma_x ** 2)))
     sigma_speed = np.sqrt(np.log((sigma_x ** 2 / (mu_x ** 2)) + 1))
-
-    time_distr = LogNormalDistribution(-mu_speed, sigma_speed)
-    time = arc_length * time_distr.get_expectation()
+    # Mean of 1 / X is exp(-mu + sigma^2 / 2)
+    mean = np.exp(-mu_speed + (sigma_speed ** 2) / 2)
+    time = arc_length * mean
     return time
 
 
@@ -102,24 +102,35 @@ def lognormal_random_time(arc_length, avg_speed=25):
 
     mu_speed = np.log((mu_x ** 2) / np.sqrt((mu_x ** 2 + sigma_x ** 2)))
     sigma_speed = np.sqrt(np.log((sigma_x ** 2 / (mu_x ** 2)) + 1))
-
-    time_distr = LogNormalDistribution(-mu_speed, sigma_speed)
-    time = arc_length * time_distr.get_sample()
+    # To sample 1 / X, where X is lognormal
+    # it is equivalent to sample X with mean -mu and sigma
+    # or equivalently sample X with mean mu and sigma
+    # and then take the inverse
+    random_speed_inverse = np.random.lognormal(-mu_speed, sigma_speed)
+    time = arc_length * random_speed_inverse
     return time
 
 
-def lognormal_random_speed(avg_speed=25):
-    # arc_length is irrelevant here but included for consistency
-    validate_positive_parameters(1, avg_speed)
+def uniform_expected_time(arc_length, avg_speed=25):
+    validate_positive_parameters(arc_length, avg_speed)
 
-    mu_x = avg_speed
-    sigma_x = 6
+    low = max(avg_speed - 3, 0)
+    high = avg_speed + 3
 
-    mu_speed = np.log((mu_x ** 2) / np.sqrt((mu_x ** 2 + sigma_x ** 2)))
-    sigma_speed = np.sqrt(np.log((sigma_x ** 2 / (mu_x ** 2)) + 1))
+    inverse_mean = (np.log(high) - np.log(low)) / (high-low)
+    time = arc_length * inverse_mean
+    return time
 
-    speed = LogNormalDistribution(mu_speed, sigma_speed).get_sample()
-    return speed
+
+def uniform_random_time(arc_length, avg_speed=25):
+    validate_positive_parameters(arc_length, avg_speed)
+
+    low = max(avg_speed - 3, 0)
+    high = avg_speed + 3
+
+    random_speed = np.random.uniform(low, high)
+    time = arc_length / random_speed
+    return time
 
 
 def normal_expected_time(arc_length, avg_speed=25):
@@ -127,9 +138,8 @@ def normal_expected_time(arc_length, avg_speed=25):
 
     mean = avg_speed
     std = 6
-
-    time_distr = NormalDistribution(mean, std)
-    time = arc_length / time_distr.get_expectation()
+    # the next step is false, the mean of 1 / X is not 1 / mean
+    time = arc_length / mean
     return time
 
 
@@ -139,53 +149,9 @@ def normal_random_time(arc_length, avg_speed=25):
     mean = avg_speed
     std = 6
 
-    time_distr = NormalDistribution(mean, std)
-    time = arc_length / time_distr.get_sample()
+    random_speed = np.random.normal(mean, std)
+    time = arc_length / random_speed
     return time
-
-
-def normal_random_speed(avg_speed=25):
-    # arc_length is irrelevant here but included for consistency
-    validate_positive_parameters(1, avg_speed)
-
-    mean = avg_speed
-    std = 6
-
-    speed = NormalDistribution(mean, std).get_sample()
-    return speed
-
-
-def uniform_expected_time(arc_length, avg_speed=25):
-    validate_positive_parameters(arc_length, avg_speed)
-
-    low = max(avg_speed - 6, 0)
-    high = avg_speed + 6
-
-    time_distr = UniformDistribution(low, high)
-    time = arc_length / time_distr.get_expectation()
-    return time
-
-
-def uniform_random_time(arc_length, avg_speed=25):
-    validate_positive_parameters(arc_length, avg_speed)
-
-    low = max(avg_speed - 6, 0)
-    high = avg_speed + 6
-
-    time_distr = UniformDistribution(low, high)
-    time = arc_length / time_distr.get_sample()
-    return time
-
-
-def uniform_random_speed(avg_speed=25):
-    # arc_length is irrelevant here but included for consistency
-    validate_positive_parameters(1, avg_speed)
-
-    low = max(avg_speed - 6, 0)
-    high = avg_speed + 6
-
-    speed = UniformDistribution(low, high).get_sample()
-    return speed
 
 
 def expected_time(arc_length, avg_speed=25, distribution="lognormal"):
@@ -214,20 +180,6 @@ def random_time(arc_length, avg_speed=25, distribution="lognormal"):
         raise ValueError("Unsupported distribution type")
 
 
-def random_speed(avg_speed=25, distribution="lognormal"):
-    # arc_length is irrelevant here but included for consistency
-    validate_positive_parameters(1, avg_speed)
-
-    if distribution == "lognormal":
-        return lognormal_random_speed(avg_speed)
-    elif distribution == "normal":
-        return normal_random_speed(avg_speed)
-    elif distribution == "uniform":
-        return uniform_random_speed(avg_speed)
-    else:
-        raise ValueError("Unsupported distribution type")
-
-
 if __name__ == "__main__":
     arc_length = 100  # km
     avg_speed = 25  # km/h
@@ -237,17 +189,14 @@ if __name__ == "__main__":
         arc_length, avg_speed, "lognormal"))
     print("Lognormal Random Time:", random_time(
         arc_length, avg_speed, "lognormal"))
-    print("Lognormal Random Speed:", random_speed(avg_speed, "lognormal"))
 
     # Test normal distribution
     print("Normal Expected Time:", expected_time(
         arc_length, avg_speed, "normal"))
     print("Normal Random Time:", random_time(arc_length, avg_speed, "normal"))
-    print("Normal Random Speed:", random_speed(avg_speed, "normal"))
 
     # Test uniform distribution
     print("Uniform Expected Time:", expected_time(
         arc_length, avg_speed, "uniform"))
     print("Uniform Random Time:", random_time(
         arc_length, avg_speed, "uniform"))
-    print("Uniform Random Speed:", random_speed(avg_speed, "uniform"))
