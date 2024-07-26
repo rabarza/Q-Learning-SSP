@@ -226,9 +226,10 @@ def plot_results_per_episode_comp_plotly(
 
             label = get_label(model) if add_label else None
 
-            if episodes > 600000:
-                values = values[::10000]
-                iterations = list(range(0, episodes, 10000))
+            if len(lista) * episodes >= 100000:
+                step = 10
+                values = values[::step]
+                iterations = list(range(0, episodes, step))
             else:
                 iterations = list(range(episodes))
 
