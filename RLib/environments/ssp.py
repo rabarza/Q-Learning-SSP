@@ -4,12 +4,11 @@ import numpy as np
 import networkx as nx
 import osmnx as ox
 import copy
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 from RLib.cost_distributions import (
     expected_time,
     random_time,
 )
+
 
 from RLib.utils.tables import dict_states_actions_zeros, dict_states_zeros, dict_states_actions_constant
 
@@ -137,59 +136,31 @@ class SSPEnv:
             self.graph[terminal_state][terminal_state][0]["length"] = 0
         self.num_nodos = graph.number_of_nodes()
         assert start_state is not None, "El estado inicial no puede ser None"
-        self.__start_state = start_state
-        self.__current_state = self.__start_state
+        self.start_state = start_state
+        self.current_state = self.start_state
         assert terminal_state is not None, "El estado terminal no puede ser None"
-        self.__terminal_state = terminal_state
-        self.__num_states = graph.number_of_nodes()
-        self.__num_actions = {
+        self.terminal_state = terminal_state
+        self.num_states = graph.number_of_nodes()
+        self.num_actions = {
             k: v
             for k, v in map(
                 lambda item: (item[0], len(item[1])
                               ), nx.to_dict_of_lists(graph).items()
             )
         }  # Diccionario con el número de acciones por estado
-        self.__adjacency_dict_of_lists = nx.to_dict_of_lists(self.graph)
-        self.__q_table = self.dict_states_actions_zeros()
-        self.__costs_distribution = costs_distribution
-        self.__shortest_path = shortest_path
+        self.adjacency_dict_of_lists = nx.to_dict_of_lists(self.graph)
+        self.q_table = self.dict_states_actions_zeros()
+        self.costs_distribution = costs_distribution
+        self.shortest_path = shortest_path
 
     def __str__(self):
         return f"EnvShortestPath {self.graph}"
 
-    @property
-    def num_states(self) -> int:
-        return self.__num_states
-
-    @property
-    def num_actions(self) -> Dict[Any, int]:
-        return self.__num_actions
-
-    @property
-    def start_state(self) -> Any:
-        return self.__start_state
-
-    @property
-    def terminal_state(self) -> Any:
-        return self.__terminal_state
-
-    @property
-    def current_state(self) -> Any:
-        return self.__current_state
-
-    @property
-    def costs_distribution(self) -> str:
-        return self.__costs_distribution
-
-    @property
-    def shortest_path(self) -> list:
-        return self.__shortest_path
-
     def reset(self):
         """Reiniciar el entorno de aprendizaje"""
-        self.__current_state = self.__start_state
+        self.current_state = self.start_state
         print(
-            f"Entorno reiniciado. Grafo con {self.num_nodos} nodos. Estado inicial: {self.__start_state}. Estado final: {self.__terminal_state}"
+            f"Entorno reiniciado. Grafo con {self.num_nodos} nodos. Estado inicial: {self.start_state}. Estado final: {self.terminal_state}"
         )
 
     def check_state(self, state) -> bool:
@@ -204,7 +175,7 @@ class SSPEnv:
             valid (bool): Indica si el estado es terminal y arroja un error si no es válido
         """
         assert (
-            state in self.__adjacency_dict_of_lists.keys()
+            state in self.adjacency_dict_of_lists.keys()
         ), f"El estado {state} no está en el graph"
         return state == self.terminal_state
 
@@ -229,12 +200,14 @@ class SSPEnv:
         # Obtener el siguiente estado, el costo de la acción y verificar si el estado es terminal
         next_state = action
         cost = get_edge_cost(self.graph, state, next_state,
-                             self.__costs_distribution)
+                             self.costs_distribution)
         terminated = self.check_state(state)
         # La recompensa es negativa porque se busca maximizar la recompensa que representa minimizar el costo
         reward = - cost
-        self.__current_state = next_state
-        info = str({"estado": state, "recompensa": reward, "terminado": terminated})
+        self.current_state = next_state
+        info = str({"estado": state,
+                    "recompensa": reward,
+                    "terminado": terminated})
         return next_state, reward, terminated, info
 
     def dict_states_actions_zeros(self) -> Dict[str, Dict[str, float]]:
@@ -245,7 +218,7 @@ class SSPEnv:
         table = dict_states_actions_constant(self.graph, constant)
         table[self.terminal_state] = {self.terminal_state: 0}
         return table
-    
+
     def dict_states_zeros(self) -> Dict[str, float]:
         """Crear un diccionario con estados con valores 0"""
         return dict_states_zeros(self.graph)
@@ -253,6 +226,48 @@ class SSPEnv:
     def calculate_optimal_qtable(self):
         """### Calcular la tabla Q óptima"""
         pass
+
+
+class HardSSPEnv(SSPEnv):
+    def __init__(self, graph: nx.Graph, start_state: Any, terminal_state: Any, costs_distribution: str = "lognormal", shortest_path: list = None):
+        super().__init__(graph, start_state, terminal_state, costs_distribution, shortest_path)
+
+    def take_action(self, state, action) -> Tuple[int, float, bool, str]:
+        """Tomar una acción en el entorno de aprendizaje
+
+        Parámetros:
+        ----------
+            state (int): Estado actual
+            action (int): Acción a tomar
+
+        Retorna:
+        --------
+            next_state (int): Siguiente estado
+            reward (float): Recompensa (o costo) por tomar la acción
+            terminated (bool): Indica si el episodio terminó
+        """
+        # Camino más corto
+        shortest_path = self.shortest_path
+        # Comparar si la acción tomada está en el camino más corto
+        if action in shortest_path[state]:
+            pass
+        else:
+            pass
+        # Obtener los arcos del nodo actual (estado actual)
+        assert self.graph.has_edge(
+            state, action
+        ), f"La acción {action} no está en los arcos del nodo {state}"
+        # Obtener el siguiente estado, el costo de la acción y verificar si el estado es terminal
+        next_state = action
+        cost = get_edge_cost(self.graph, state, next_state,
+                             self.costs_distribution)
+        terminated = self.check_state(state)
+        # La recompensa es negativa porque se busca maximizar la recompensa que representa minimizar el costo
+        reward = - cost
+        self.current_state = next_state
+        info = str({"estado": state, "recompensa": reward,
+                   "terminado": terminated})
+        return next_state, reward, terminated, info
 
 
 if __name__ == "__main__":
