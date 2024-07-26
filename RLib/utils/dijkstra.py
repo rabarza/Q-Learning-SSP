@@ -134,13 +134,10 @@ def get_path_as_stateactions_dict(path):
         Diccionario que contiene la política óptima para el camino más corto entre el nodo de inicio y el nodo de destino. Tiene la forma {nodo: acción, ..., nodo: acción} donde la acción es el siguiente nodo en el camino más corto.
 
     """
-    dest_node = path[-1]
-    # Inicializar la política excluyendo el nodo de destino
-    path_dict = {node: 0 for node in path if node != dest_node}
-    for index in range(len(path) - 1):
-        node = path[index]
-        next_node = path[index + 1]
-        path_dict[node] = next_node
+    states = path[:-1]
+    actions = path[1:]
+    path_dict = {state: action for state, action in zip(states, actions)}
+    path_dict[path[-1]] = path[-1]
     return path_dict
 
 
