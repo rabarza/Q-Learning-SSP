@@ -6,7 +6,7 @@ import random
 def create_perceptron_graph(nodes_by_layer=[1, 1],
                             min_length=1,
                             max_length=20,
-                            ) -> nx.DiGraph:
+                            seed=None) -> nx.DiGraph:
     """ 
     Crea un grafo dirigido que representa un perceptrón multicapa.
 
@@ -18,6 +18,8 @@ def create_perceptron_graph(nodes_by_layer=[1, 1],
         Longitud mínima de los arcos que conectan los nodos.
     max_length : int
         Longitud máxima de los arcos que conectan los nodos.
+    seed : int, optional
+        Semilla para el generador de números aleatorios para garantizar reproducibilidad.
 
     Retorna
     -------
@@ -27,6 +29,10 @@ def create_perceptron_graph(nodes_by_layer=[1, 1],
     if type(nodes_by_layer) != list:
         raise TypeError(
             "Los parámetros layers y nodes_by_layer deben ser listas.")
+
+    # Inicializar la semilla para los números aleatorios
+    if seed is not None:
+        random.seed(seed)
 
     # Definir las capas del perceptrón y el número de nodos en cada capa
     layers = list(map(lambda x: f'Capa {x}', range(len(nodes_by_layer))))
@@ -43,8 +49,8 @@ def create_perceptron_graph(nodes_by_layer=[1, 1],
 
     for i, capa in enumerate(layers):
         for j in range(nodes_by_layer[i]):
-            posiciones[(capa, j)] = (i * x_step,
-                                     - (j * y_step) + (nodes_by_layer[i] - 1) / 2)
+            posiciones[(capa, j)] = (
+                i * x_step, - (j * y_step) + (nodes_by_layer[i] - 1) / 2)
             # Agregar nodos al grafo con las posiciones definidas.
             # Las posiciones se almacenan en la llave "pos" de cada nodo.
             perceptron_graph.add_node((capa, j), pos=posiciones[(capa, j)])
