@@ -32,20 +32,21 @@ def save_model_results(agent, results_path=None):
         # Carpeta "results" en la carpeta del archivo que llama a la función
         results_path = os.path.join(results_path, "results")
         print(f"results_path: {results_path}")
-    if not os.path.exists(results_path):
-        os.makedirs(results_path)
+    os.makedirs(results_path, exist_ok=True)
     # Obtener la fecha y hora actual
     fecha_hora_actual = datetime.now()
     # Formatear la fecha y hora como una cadena
     fecha_hora_str = fecha_hora_actual.strftime("%Y-%m-%d_%H-%M-%S")
     # Crear el nombre del archivo con la fecha y hora
-    agent_filename = f"QAgentSSP_{agent.strategy}_{agent.num_episodes}_{agent.alpha}_{agent.env.costs_distribution}_{fecha_hora_str}.pickle"
-    q_table_filename = f"QTable_{agent.strategy}_{agent.num_episodes}_{agent.alpha}_{agent.env.costs_distribution}_{fecha_hora_str}.json"
-    q_table_sp_filename = f"QTableSP_{agent.strategy}_{agent.num_episodes}_{agent.alpha}_{agent.env.costs_distribution}_{fecha_hora_str}.json"
+    agent_filename = f"QAgentSSP_{agent.strategy}_{agent.num_episodes}_{agent.env.costs_distribution}_{fecha_hora_str}.pickle"
+    q_table_filename = f"QTable_{agent.strategy}_{agent.num_episodes}_{agent.env.costs_distribution}_{fecha_hora_str}.json"
+    q_table_sp_filename = f"QTableSP_{agent.strategy}_{agent.num_episodes}_{agent.env.costs_distribution}_{fecha_hora_str}.json"
+    visits_state_action_filename = f"VisitsStateAction_{agent.strategy}_{agent.num_episodes}_{agent.env.costs_distribution}_{fecha_hora_str}.json"
     # Combinar el nombre del archivo con la ruta de la carpeta "results"
     agent_storage_path = os.path.join(results_path, agent_filename)
     q_table_storage_path = os.path.join(results_path, q_table_filename)
     q_table_sp_storage_path = os.path.join(results_path, q_table_sp_filename)
+    visits_storage_path = os.path.join(results_path, visits_state_action_filename)
     # Obtener la tabla Q para el mejor camino
     shortest_path = agent.shortest_path
     q_table = agent.q_table
@@ -54,6 +55,7 @@ def save_model_results(agent, results_path=None):
     # Serializar la tabla Q para el mejor camino
     serialized_q_table = serialize_table(q_table)
     serialized_q_table_sp = serialize_table(q_table_sp)
+    serialized_visits = serialize_table(agent.times_actions)
 
     # Guardar el agent en el archivo usando pickle
     with open(agent_storage_path, "wb") as archivo:
@@ -65,6 +67,10 @@ def save_model_results(agent, results_path=None):
     # Guardar la tabla Q para el mejor camino en el archivo JSON
     with open(q_table_sp_storage_path, "w") as archivo:
         json.dump(serialized_q_table_sp, archivo, indent=4)
+    # Guardar la tabla de visitas en el archivo JSON
+    with open(visits_storage_path, "w") as archivo:
+        json.dump(serialized_visits, archivo, indent=4)
+    
 
 
 def load_model_results(nombre_archivo, ruta_carpeta="results"):
