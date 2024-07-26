@@ -1,4 +1,4 @@
-from RLib.distributions.distributions import expected_time
+from RLib.cost_distributions import expected_time
 from RLib.environments.ssp import get_edge_length, get_edge_speed
 from RLib.utils.tables import dict_states_actions_zeros
 from stqdm import stqdm
