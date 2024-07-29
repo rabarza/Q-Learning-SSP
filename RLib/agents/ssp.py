@@ -4,7 +4,7 @@ from RLib.utils.tables import max_q_table, max_norm, exploitation
 from RLib.action_selectors import EpsilonGreedyActionSelector
 from stqdm import stqdm
 from tqdm import tqdm
-from math import sqrt, log # util para el calculo de la tasa de aprendizaje en eval
+from math import sqrt, log  # util para el calculo de la tasa de aprendizaje en eval
 import numpy as np
 import random
 import copy
@@ -166,7 +166,7 @@ class QAgentSSP(QAgent):
         # self.q_table = self.env.dict_states_actions_constant(constant=-15)
         self.id = id(self)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"QAgentSSP(strategy={self.action_selector} alpha={self.alpha} gamma={self.gamma} alpha_formula={self.alpha_formula})"
 
     def train(
@@ -175,8 +175,8 @@ class QAgentSSP(QAgent):
         shortest_path=None,
         q_star=None,
         verbose=False,
-        st=False
-    ):
+        use_streamlit=False
+    ) -> None:
         """
         Resuelve el problema del Shortest Path usando el algoritmo Q-Learning
 
@@ -209,29 +209,25 @@ class QAgentSSP(QAgent):
         self.average_regret = np.zeros(num_episodes)
         self.optimal_paths = np.zeros(num_episodes)
         optimal_paths_count = 0
-
+        # optimal q table (Q*)
         self.q_star = q_star
-
-        # best
-        self.steps_best = np.zeros(num_episodes)  # Cambios temporales
-        self.scores_best = np.zeros(num_episodes)  # Cambios temporales
-        self.avg_scores_best = np.zeros(num_episodes)  # Cambios temporales
-
-        # max norm error
+        # max norm error for all state-action pairs
         self.max_norm_error = np.zeros(num_episodes)
-        # max_norm_error for a policy
+        # max_norm_error for shortest path state-action pairs only
         self.max_norm_error_shortest_path = np.zeros(num_episodes)
-
-        q_table_aux = copy.deepcopy(self.q_table)  # Cambios temporales
-        # tasa de descuento
+        # discount rate
         gamma = self.gamma
         # Estado inicial
         initial_state = self.env.start_state
-        # Obtener el costo óptimo para calcular el regret
+        # optimal cost (used to calculate regret)
         optimal_cost = max_q_table(q_star, initial_state)
-        episodes_range = tqdm(range(num_episodes)) if not st else stqdm(
+
+        # Comenzar a entrenar al agente
+        progress_bar = tqdm if not use_streamlit else stqdm
+        episodes_range = progress_bar(
             range(num_episodes), desc="Completado", ncols=100, leave=True)
         for episode in episodes_range:
+            self.env.reset()
             done = False
             self.actual_episode = episode
             total_score = 0
@@ -264,8 +260,8 @@ class QAgentSSP(QAgent):
                 total_score += reward
                 # Imprimir información de la ejecución
                 print(info) if verbose else None
-        
-            path.append(state)	# Agregar el estado terminal al camino
+
+            path.append(state)  # Agregar el estado terminal al camino
             # Contar la cantidad de veces que se llegó al camino óptimo
             if path == self.env.shortest_path:
                 optimal_paths_count += 1
@@ -287,26 +283,25 @@ class QAgentSSP(QAgent):
             self.max_norm_error_shortest_path[episode] = max_norm_error_shortest_path
             # Almacenar cantidad promedio de valores q y del episodio
             self.scores[episode] = total_score
-            self.avg_scores[episode] = total_score / \
-                max(self.steps[episode], 1)
+            self.avg_scores[episode] = np.sum(self.scores[:episode+1])/max(episode, 1)  # noqa: E501
             # Calcular el regret
-            self.average_regret[episode] = optimal_cost - \
-                np.sum(self.scores[:episode+1])/max(episode, 1)
-            self.regret[episode] = episode*optimal_cost - \
-                np.sum(self.scores[:episode+1])
+            self.average_regret[episode] = optimal_cost - np.sum(self.scores[:episode+1])/max(episode, 1)  # noqa: E501
+            self.regret[episode] = episode*optimal_cost - np.sum(self.scores[:episode+1])  # noqa: E501
             self.optimal_paths[episode] = optimal_paths_count
 
             # Mostrar información de la ejecución
             message = f"Episodio {episode + 1}/{num_episodes} - Puntaje: {total_score:.2f} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error path: {max_norm_error_shortest_path:.3f}\n"
-            stqdm.write(message) if st else tqdm.write(message) # Mostrar información en streamlit o en consola
+            # Mostrar mensaje en streamlit o en consola
+            progress_bar.write(message)
 
-    def best_path(self, state=None):
+    def best_path(self, state=None) -> list:
         """Devuelve el mejor camino desde un estado inicial hasta el estado terminal
 
-        Parameters
-
+        Parámetros:
+        -----------
         state: int
             estado inicial desde el cual se quiere encontrar el mejor camino hasta el estado terminal
+    
         """
         if not state:
             state = self.env.start_state
