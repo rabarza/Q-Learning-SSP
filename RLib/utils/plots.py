@@ -195,6 +195,8 @@ def plot_results_per_episode_comp_plotly(
     criteria_mapping = {
         "steps": ("steps", "steps_best"),
         "score": ("scores", "scores_best"),
+        "reward": ("scores", "scores_best"),
+        "average reward": ("avg_scores", "avg_scores_best"),
         "avg score": ("avg_scores", "avg_scores_best"),
         "error": ("max_norm_error", None),
         "policy error": ("max_norm_error_shortest_path", None),
