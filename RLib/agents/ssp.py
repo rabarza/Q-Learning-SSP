@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from RLib.environments.ssp import SSPEnv
-from RLib.utils.tables import max_q_table, max_norm, exploitation
+from RLib.utils.tables import max_q_table, max_norm
+from RLib.utils.files import save_model_results
 from RLib.action_selectors import EpsilonGreedyActionSelector
 from stqdm import stqdm
 from tqdm import tqdm
@@ -27,7 +28,10 @@ class QAgent:
         """
         Retorna la acción a con mayor valor Q(s,a) para un estado s
         """
-        argmax_action = max(self.q_table[state], key=self.q_table[state].get)
+        available_actions = self.action_set(state)
+        q_values = {action: self.q_table[state][action]
+                    for action in available_actions}
+        argmax_action = max(q_values, key=q_values.get)
         return argmax_action
 
     def max_q_table(self, state):
@@ -38,22 +42,35 @@ class QAgent:
         assert self.q_table[state], f"No hay acciones disponibles en el estado {state}"
         return max(list(self.q_table[state].values()))
 
+    def action_set(self, state) -> list:
+        """
+        Retorna el conjunto de acciones disponibles en el estado s
+
+        Parámetros:
+        ----------
+        state (int): Estado actual
+
+        Retorna:
+        --------
+        available_actions (list): Lista de acciones disponibles en el estado s
+        """
+        # Acciones disponibles en el estado s
+        return self.env.action_set(state)
+
     def random_action(self, state):
         """
         Retorna una acción aleatoria a' de Q(s,a')
         """
         assert state in self.q_table, f"El estado {state} no está en q_table."
         assert self.q_table[state], f"No hay acciones disponibles en el estado {state}"
-        keys = list(self.q_table[state].keys())
-        size = len(keys)
-        index = np.random.randint(0, size)
-        return keys[index]
+        actions = self.action_set(state)
+        return random.choice(actions)
 
     def number_of_available_actions(self, state):
         """
         Retorna la cantidad de acciones disponibles en el estado s
         """
-        return len(self.q_table[state])
+        return len(self.action_set(state))
 
     def increment_times_state(self, state):
         """
@@ -106,6 +123,14 @@ class QAgent:
         self.increment_times_state_action(state, action)
         # Devolver acción
         return action
+
+    def save(self, path):
+        """
+        Guardar el agente en un archivo .pkl y los resultados en un archivo .json
+        """
+        alpha_type = "dynamic" if self.dynamic_alpha else "constant"
+        save_path = os.path.join(path, f"{alpha_type}_alpha/{self.strategy}/")  # noqa: E501
+        save_model_results(self, save_path)
 
 
 class QAgentSSP(QAgent):
@@ -168,6 +193,9 @@ class QAgentSSP(QAgent):
 
     def __str__(self) -> str:
         return f"QAgentSSP(strategy={self.action_selector} alpha={self.alpha} gamma={self.gamma} alpha_formula={self.alpha_formula})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     def train(
         self,
@@ -301,7 +329,7 @@ class QAgentSSP(QAgent):
         -----------
         state: int
             estado inicial desde el cual se quiere encontrar el mejor camino hasta el estado terminal
-    
+
         """
         if not state:
             state = self.env.start_state
@@ -317,6 +345,21 @@ class QAgentSSP(QAgent):
             if self.env.terminal_state == state:
                 done = True
         return path
+    
+    def results(self):
+        # make a dictionary with the results
+        results = {
+            "strategy": self.strategy,
+            "parameters": self.action_selector.get_label(),
+            "steps": self.steps,
+            "scores": self.scores,
+            "avg_scores": self.avg_scores,
+            "regret": self.regret,
+            "average_regret": self.average_regret,
+            "max_norm_error": self.max_norm_error,
+            "max_norm_error_shortest_path": self.max_norm_error_shortest_path
+        }
+        return results
 
 
 if __name__ == "__main__":
@@ -344,3 +387,4 @@ if __name__ == "__main__":
     agent.train(num_episodes=10000, distribution='lognormal',
                 shortest_path=shortest_path, q_star=optimal_q_table)
     print(agent.best_path())
+

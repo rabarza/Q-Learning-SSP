@@ -4,6 +4,10 @@ import numpy as np
 import networkx as nx
 import osmnx as ox
 import copy
+import sys
+import os
+# Importar RLib desde el directorio superior
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))  # noqa: E402
 from RLib.cost_distributions import (
     expected_time,
     random_time,
@@ -159,10 +163,23 @@ class SSPEnv:
     def reset(self):
         """Reiniciar el entorno de aprendizaje"""
         self.current_state = self.start_state
-        print(
-            f"Entorno reiniciado. Grafo con {self.num_nodos} nodos. Estado inicial: {self.start_state}. Estado final: {self.terminal_state}"
-        )
+        # print(
+        #     f"Entorno reiniciado. Grafo con {self.num_nodos} nodos. Estado inicial: {self.start_state}. Estado final: {self.terminal_state}"
+        # )
 
+    def action_set(self, state) -> list:
+        """Obtener el conjunto de acciones posibles en un estado
+
+        Parámetros:
+        ----------
+            state (int): Estado actual
+
+        Retorno:
+        --------
+            actions (list): Lista de acciones posibles en el estado actual
+        """
+        return list(self.graph[state])
+    
     def check_state(self, state) -> bool:
         """Verificar si un estado es válido y/o terminal.
 
@@ -231,44 +248,88 @@ class SSPEnv:
 class HardSSPEnv(SSPEnv):
     def __init__(self, graph: nx.Graph, start_state: Any, terminal_state: Any, costs_distribution: str = "lognormal", shortest_path: list = None):
         super().__init__(graph, start_state, terminal_state, costs_distribution, shortest_path)
+        if shortest_path is None:
+            self.shortest_path = nx.shortest_path(
+                self.graph, self.start_state, self.terminal_state)
+        self.edges_reduced = False
+        self.reset()
+
+    def reset(self):
+        self.current_state = self.start_state
+        self.current_graph = copy.deepcopy(self.graph)
+        self.shortest_path_edges = self.get_path_edges(self.shortest_path)
+        self.edges_reduced = False
+        
+    def action_set(self, state) -> list:
+        return list(self.current_graph[state])
+
+    def remove_shortest_path_edges(self):
+        # print(f"Eliminando arcos del camino más corto")
+        # Remover los arcos del camino más corto excepto el primero y el último
+        self.current_graph.remove_edges_from(self.shortest_path_edges[1:-1])
+        # print(f"Eliminados los arcos del camino más corto: {self.shortest_path_edges}")
+        # self.ensure_largest_component()
+        self.shortest_path_edges = self.get_path_edges(self.shortest_path)
+        self.edges_reduced = True
+
+    def ensure_largest_component(self):
+        self.current_graph = ox.truncate.largest_component(
+            self.current_graph, strongly=True)
+
+    def check_state(self, state) -> bool:
+        if self.terminal_state not in self.current_graph.nodes or self.start_state not in self.current_graph.nodes:
+            return True
+        is_terminal_state = super().check_state(state)
+        is_connected = nx.has_path(
+            self.current_graph, state, self.terminal_state)
+        # print(f"Estado: {state}, Conectado: {is_connected}")
+        return is_terminal_state or not is_connected
+
+    def get_path_edges(self, path):
+        return [(path[i], path[i + 1]) for i in range(len(path) - 1)]
 
     def take_action(self, state, action) -> Tuple[int, float, bool, str]:
-        """Tomar una acción en el entorno de aprendizaje
+        # assert self.current_graph.has_edge(
+        #     state, action
+        # ), f"La acción {action} no está en los arcos del nodo {state}"
 
-        Parámetros:
-        ----------
-            state (int): Estado actual
-            action (int): Acción a tomar
-
-        Retorna:
-        --------
-            next_state (int): Siguiente estado
-            reward (float): Recompensa (o costo) por tomar la acción
-            terminated (bool): Indica si el episodio terminó
-        """
-        # Camino más corto
-        shortest_path = self.shortest_path
-        # Comparar si la acción tomada está en el camino más corto
-        if action in shortest_path[state]:
-            pass
-        else:
-            pass
-        # Obtener los arcos del nodo actual (estado actual)
-        assert self.graph.has_edge(
-            state, action
-        ), f"La acción {action} no está en los arcos del nodo {state}"
-        # Obtener el siguiente estado, el costo de la acción y verificar si el estado es terminal
-        next_state = action
-        cost = get_edge_cost(self.graph, state, next_state,
+        cost = get_edge_cost(self.current_graph, state, action,
                              self.costs_distribution)
+        next_state = action if self.current_graph.has_edge(
+            state, action) else state
+        
+        already_removed = self.edges_reduced
+        if (state, action) not in self.shortest_path_edges and not already_removed:  
+            self.remove_shortest_path_edges()
+
         terminated = self.check_state(state)
-        # La recompensa es negativa porque se busca maximizar la recompensa que representa minimizar el costo
         reward = - cost
         self.current_state = next_state
-        info = str({"estado": state, "recompensa": reward,
-                   "terminado": terminated})
+        info = str({"estado": state, 
+                    "recompensa": reward,
+                    "terminado": terminated})
         return next_state, reward, terminated, info
 
-
+    
 if __name__ == "__main__":
-    pass
+    from RLib.graphs.perceptron import create_perceptron_graph
+    G = create_perceptron_graph([1, 10, 10, 1])
+    origin_node = ('Entrada', 0)
+    target_node = ('Salida', 0)
+
+    env = HardSSPEnv(G, start_state=origin_node, terminal_state=target_node)
+    for _ in range(20):
+        env.reset()
+        neighbors = list(env.current_graph[env.current_state].keys())
+        print(f"Neighbors of {env.current_state}: {neighbors}")
+        action = random.choice(neighbors)
+        state = env.start_state
+        done = False
+        while not done:
+            neighbors = list(env.current_graph[state].keys())
+            print(f"Neighbors of {state}: {neighbors}")
+            # Selección de una acción aleatoria
+            action = random.choice(list(env.current_graph[state].keys()))
+            state, reward, done, info = env.take_action(state, action)
+            print(f"State: {state}, Reward: {reward}, Done: {done}")
+            print(info)
