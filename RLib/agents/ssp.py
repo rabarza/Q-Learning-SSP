@@ -365,6 +365,21 @@ class QAgentSSP(QAgent):
             if self.env.terminal_state == state:
                 done = True
         return path
+    
+    def results(self):
+        # make a dictionary with the results
+        results = {
+            "strategy": self.strategy,
+            "parameters": self.action_selector.get_label(),
+            "steps": self.steps,
+            "scores": self.scores,
+            "avg_scores": self.avg_scores,
+            "regret": self.regret,
+            "average_regret": self.average_regret,
+            "max_norm_error": self.max_norm_error,
+            "max_norm_error_shortest_path": self.max_norm_error_shortest_path
+        }
+        return results
 
     def results(self):
         # make a dictionary with the results
@@ -564,3 +579,4 @@ if __name__ == "__main__":
     agent.train(num_episodes=10000, distribution='lognormal',
                 shortest_path=shortest_path, q_star=optimal_q_table)
     print(agent.best_path())
+

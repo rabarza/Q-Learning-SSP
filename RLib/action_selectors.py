@@ -22,6 +22,9 @@ class ActionSelector(object):
 
     def select_action(self, agent, state):
         raise NotImplementedError()
+    
+    def action_set(self, agent, state):
+        return agent.action_set(state)
 
     def action_set(self, agent, state):
         return agent.action_set(state)
