@@ -1,5 +1,6 @@
 from typing import List
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from itertools import cycle
@@ -38,9 +39,12 @@ def get_label(agent):
         label["alpha"] = f"α = {agent.alpha_formula}"
     else:
         label["alpha"] = f"α = {agent.alpha}"
-    return (
-        f"{agent.action_selector.get_label()} | {label['alpha']} | {label['strategy']}"
-    )
+    # If the agent has action selector
+    if hasattr(agent, "action_selector") and agent.action_selector is not None:
+        return (
+            f"{agent.action_selector.get_label()} | {label['alpha']} | {label['strategy']}"
+        )
+    return f"{agent.get_label()} | {label['alpha']} | {label['strategy']}"
 
 
 # ======================= Matplotlib =======================
@@ -169,14 +173,15 @@ def ajustar_intensidad_color(color, intensity_factor):
 
 
 def plot_results_per_episode_comp_plotly(
-    lista: List[QAgentSSP], criteria: str = "avg score", add_label: bool = True, compare_best: bool = False
-):
-    '''Genera un gráfico de comparación de resultados por episodio utilizando Plotly.
+        agents_list: List[QAgentSSP], criteria: str = "error", add_label: bool = True):
+    """
+    Genera un gráfico de comparación de resultados por episodio utilizando Plotly y crea un DataFrame
+    de los resultados de cada agente.
 
     Parameters
     ----------
-    lista : list
-        Lista de agentes QLearningAgent.
+    agents_list : list
+        agents_list de agentes QLearningAgent.
     criteria : str
         Criterio de comparación entre los agentes. Puede ser 'steps', 'score', 'avg score', 'error', 'policy error' o 'regret'.
     add_label : bool
@@ -188,7 +193,9 @@ def plot_results_per_episode_comp_plotly(
     -------
     fig : plotly.graph_objects.Figure
         Gráfico de comparación de resultados por episodio.
-    '''
+    agent_dataframes : dict
+        Un diccionario que contiene un DataFrame para cada agente.
+    """
 
     fig = go.Figure()
 
@@ -199,63 +206,64 @@ def plot_results_per_episode_comp_plotly(
         "average reward": ("avg_scores", "avg_scores_best"),
         "avg score": ("avg_scores", "avg_scores_best"),
         "error": ("max_norm_error", None),
+        "max_norm_error_normalized": ("max_norm_error_normalized", None),
         "policy error": ("max_norm_error_shortest_path", None),
+        "max_norm_error_shortest_path": ("max_norm_error_shortest_path", None),
+        "max_norm_error_shortest_path_normalized": ("max_norm_error_shortest_path_normalized", None),
         "regret": ("regret", None),
         "average regret": ("average_regret", None),
         "optimal paths": ("optimal_paths", None),
     }
 
     if criteria not in criteria_mapping:
-        raise ValueError("Invalid comparison criteria")
+        raise ValueError(f"Invalid comparison criteria: {criteria}")
 
-    values_attr, values_best_attr = criteria_mapping[criteria]
+    values_attr, _ = criteria_mapping[criteria]
     criteria_name = "Shortest Path Error" if criteria == "policy error" else criteria.capitalize()
 
-    for estrategia, agentes in group_by_keyword(lista, "strategy"):
+    for estrategia, agentes in group_by_keyword(agents_list, "strategy"):
         try:
             color_base = get_color_by_strategy(estrategia)
         except KeyError:
             color_base = get_random_color()
 
-        for idx, model in enumerate(agentes):
+        for idx, agent in enumerate(agentes):
             # Ajustar la intensidad del color para cada línea dentro del grupo
-            color_actual = ajustar_intensidad_color(color_base, 1 - 0.0005 * idx)
+            color_actual = ajustar_intensidad_color(
+                color_base, 1 - 0.0005 * idx)
+            # Cargar los resultados del agente
+            data = agent.results()
 
-            values = getattr(model, values_attr)
-            values_best = getattr(
-                model, values_best_attr) if values_best_attr and compare_best else None
-            episodes = model.num_episodes
+            if values_attr not in data:
+                print(
+                    f"Attribute {values_attr} not found for agent {agent}. Skipping.")
+                continue
 
-            label = get_label(model) if add_label else None
+            values = data[values_attr]
+            episodes = agent.num_episodes
+            label = get_label(agent) if add_label else None
 
-            if len(lista) * episodes >= 100000:
-                step = 10
-                values = values[::step]
-                iterations = list(range(0, episodes, step))
-            else:
-                iterations = list(range(episodes))
+            # Crear DataFrame para este agente
+            agent_df = pd.DataFrame({
+                "episode": list(range(episodes)),
+                criteria: values
+            })
+            
 
+            # Submuestrear si es necesario
+            n = 25
+            agent_df = agent_df.iloc[::n, :]
+
+            # Agregar la curva del agente al gráfico
             fig.add_trace(
                 go.Scattergl(
-                    x=iterations,
-                    y=values,
+                    x=agent_df["episode"],
+                    y=agent_df[criteria],
                     mode="lines",
                     name=label,
                     line=dict(color=color_actual),
                 )
             )
-
-            if values_best is not None:
-                values_best = values_best[::10]
-                fig.add_trace(
-                    go.Scattergl(
-                        x=iterations,
-                        y=values_best,
-                        mode="lines",
-                        name=label + " (Best)",
-                        line=dict(color=color_actual, dash="dash"),
-                    )
-                )
 
     fig.update_layout(
         xaxis_title="Episodios",
@@ -313,16 +321,16 @@ def plot_results_per_episode_comp_matplotlib(
         except KeyError:
             color_base = get_random_color()
 
-        for idx, model in enumerate(agentes):
+        for idx, agent in enumerate(agentes):
             # Ajustar la intensidad del color para cada línea dentro del grupo
             color_actual = ajustar_intensidad_color(color_base, 1 - 0.05 * idx)
 
-            values = getattr(model, values_attr)
+            values = getattr(agent, values_attr)
             values_best = getattr(
-                model, values_best_attr) if values_best_attr and compare_best else None
-            episodes = model.num_episodes
+                agent, values_best_attr) if values_best_attr and compare_best else None
+            episodes = agent.num_episodes
 
-            label = get_label(model) if add_label else None
+            label = get_label(agent) if add_label else None
 
             if episodes > 600000:
                 values = values[::10000]
