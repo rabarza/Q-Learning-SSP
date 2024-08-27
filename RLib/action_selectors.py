@@ -23,6 +23,9 @@ class ActionSelector(object):
     def select_action(self, agent, state):
         raise NotImplementedError()
 
+    def action_set(self, agent, state):
+        return agent.action_set(state)
+
     def __str__(self):
         return self.__class__.__name__ + str(self.params)
 
@@ -98,11 +101,13 @@ class UCB1ActionSelector(ActionSelector):
     def select_action(self, agent, state):
         c = self.c
         # Lista de acciones disponibles en el estado actual
-        actions = list(agent.q_table[state].keys())
+        actions = agent.action_set(state)
         # Contador de visitas para cada accion en el estado actual
-        times_actions = np.array(list(agent.times_actions[state].values()))
+        visits_state = agent.times_states[state]
+        visits_state_action = np.fromiter(
+            (agent.times_actions[state][action] for action in actions), dtype=float)
         # Contar la cantidad de acciones que no han sido escogidas en el estado actual
-        not_chosen_actions_idx = np.where(times_actions == 0)[0]
+        not_chosen_actions_idx = np.where(visits_state_action == 0)[0]
         # Si alguna(s) de las acciones aún no ha sido escogida...
         if not_chosen_actions_idx.shape[0] > 0:
             # Se selecciona aleatoriamente esa acción dentro de las no visitadas
@@ -110,16 +115,17 @@ class UCB1ActionSelector(ActionSelector):
             action_idx = np.random.choice(not_chosen_actions_idx)
         else:
             # Obtener los valores de q para cada acción a partir del estado s
-            q_state = np.array(list(agent.q_table[state].values()))
+            q_state = np.fromiter(
+                (agent.q_table[state][action] for action in actions), dtype=float)
             # Calcular el valor de los estimadores de q utilizando la estrategia UCB
-            t = max(agent.times_states[state], 1)
-            ucb = q_state + c * np.sqrt(np.log(t) / times_actions)
+            t = max(visits_state, 1)
+            ucb = q_state + c * np.sqrt(np.log(t) / visits_state_action)
             max_ucb = np.max(ucb)
             # indexes where the max is attained
             max_idxs = np.argwhere(ucb == max_ucb)[0]
             # argmax action index
             action_idx = np.random.choice(max_idxs)
-        action = list(agent.q_table[state].keys())[action_idx]
+        action = actions[action_idx]
         # Devolver acción
         return action
 
@@ -130,7 +136,7 @@ class UCB1ActionSelector(ActionSelector):
 class AsOptUCBActionSelector(ActionSelector):
     """Asymptotically Optimal UCB action selector"""
     @auto_super_init
-    def __init__(self, c=4):
+    def __init__(self, c=2):
         """Parámetros
         c: parámetro de exploración
         """
@@ -141,11 +147,13 @@ class AsOptUCBActionSelector(ActionSelector):
     def select_action(self, agent, state):
         c = self.c
         # Lista de acciones disponibles en el estado actual
-        actions = list(agent.q_table[state].keys())
+        actions = agent.action_set(state)
         # Contador de visitas para cada accion en el estado actual
-        times_actions = np.array(list(agent.times_actions[state].values()))
+        visits_state = agent.times_states[state]
+        visits_state_action = np.fromiter(
+            (agent.times_actions[state][action] for action in actions), dtype=float)
         # Contar la cantidad de acciones que no han sido escogidas en el estado actual
-        not_chosen_actions_idx = np.where(times_actions == 0)[0]
+        not_chosen_actions_idx = np.where(visits_state_action == 0)[0]
 
         if not_chosen_actions_idx.shape[0] > 0:
             # Escoger una acción no visitada anteriormente de forma aleatoria
@@ -154,18 +162,19 @@ class AsOptUCBActionSelector(ActionSelector):
             )  # Se escoge el índice de la acción
         else:
             # Obtener los valores de q para cada acción a partir del estado s
-            q_state = np.array(list(agent.q_table[state].values()))
+            q_state = np.fromiter(
+                (agent.q_table[state][action] for action in actions), dtype=float)
             # Calcular el valor de los estimadores de q utilizando la estrategia UCB
-            t = agent.times_states[state]
+            t = max(visits_state, 1)
             f_t = 1 + t * np.log(t)**2
-            ucb = q_state + c * np.sqrt(np.log(f_t) / times_actions)
+            ucb = q_state + np.sqrt(c * np.log(f_t) / visits_state_action)
             # Seleccionar acción
             max_ucb = np.max(ucb)
             # indexes where the max is attained
             max_idxs = np.argwhere(ucb == max_ucb)[0]
             # argmax action index
             action_idx = np.random.choice(max_idxs)
-        action = list(agent.q_table[state].keys())[action_idx]
+        action = actions[action_idx]
         # Devolver acción
         return action
 
@@ -197,13 +206,12 @@ class Exp3ActionSelector(ActionSelector):
         self.strategy = "exp3"
         return locals()
 
-    def calculate_eta(self, t, T):
-        eta = eval(self.eta)
-        return eta
-
     def calculate_probabilities(self, agent, state, eta):
+        # acciones disponibles en el estado actual
+        actions = agent.action_set(state)
         # Obtener los valores de q para cada acción a partir del estado s
-        q_state = np.array(list(agent.q_table[state].values()))
+        q_state = np.fromiter(
+            (agent.q_table[state][action] for action in actions), dtype=float)
         # Los valores de q se normalizan para evitar problemas de overflow (restando el máximo valor de q)
         max_q = np.max(q_state)
         exp_values = np.exp((q_state - max_q) * eta)
@@ -212,13 +220,16 @@ class Exp3ActionSelector(ActionSelector):
         return probabilities
 
     def select_action(self, agent, state):
+        # Visitas al estado actual
         t = agent.times_states[state]
+        # Número total de episodios (Horizonte de tiempo)
         T = agent.num_episodes
-        eta = self.calculate_eta(t, T)
-
         # Calcular probabilidades de selección de acciones
-        actions = list(agent.q_table[state].keys())
+        actions = agent.action_set(state)
         actions_idx = np.arange(len(actions))
+        # Evaluar eta en función del tiempo y el número de episodios
+        eta = eval(self.eta, {'t': t, 'T': T, 'sqrt': sqrt,
+                   'log': log, 'A': len(actions)})
         probabilities = self.calculate_probabilities(agent, state, eta)
         try:
             # Muestrear acción de acuerdo a la distribución generada
