@@ -112,7 +112,7 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
         # Añadir longitud del arco al texto del arco
         # Obtener la longitud del arco
         length = graph.edges[edge].get('length', 0)
-
+        
         if use_annotations:
             # Calcular el primer trozo (15%) del segmento para la anotación
             annot_x = x0 + (x1 - x0) * label_pos
@@ -131,7 +131,7 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
                 )
             )
         else:
-            # Calcular puntos intermedios para hover
+            # Calcular puntos intermedios para hover donde se muestra la longitud del arco
             for i in range(1, segment_count):
                 # Combinacion convexa de los puntos de inicio y fin (i/segment_count) <= 1
                 mid_x = x0 + (x1 - x0) * i / segment_count
