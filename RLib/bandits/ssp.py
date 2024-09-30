@@ -1,13 +1,14 @@
 import sys
 import os
-
 # Añadir el directorio superior a RLib al PYTHONPATH
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-import random
-import numpy as np
-from math import log, sqrt
-import networkx as nx
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../..')))  # noqa
+
 from RLib.cost_distributions import expected_time, random_time
+import networkx as nx
+from math import log, sqrt
+import numpy as np
+import random
 
 
 def find_all_paths(graph, start_node, end_node):
@@ -26,14 +27,14 @@ def calculate_path_weights(graph, paths, weight='length'):
 
 
 def train_bandit(bandit, path_lengths, num_rounds, distribution='normal'):
-    regrets = []
     for t in range(1, num_rounds + 1):
         chosen_arm = bandit.select_arm()
         # Recompensa negativa ya que buscamos minimizar el costo
         reward = min(- random_time(path_lengths[chosen_arm],
                                    25, distribution), 0)
         bandit.pull(chosen_arm, reward)
-        print(f"Round {t}: Chosen arm {chosen_arm}, Reward {reward}, Regret {bandit.regret(t)}")
+        info = f"Round {t}: Chosen arm {chosen_arm}, Reward {reward:.2f}, Regret {bandit.regret(t):.2f}"
+        print(info)
 
 
 class MultiArmedBandit:
@@ -137,10 +138,10 @@ class EXP3MultiArmedBandit(MultiArmedBandit):
         self.S_hat = np.zeros(self.num_paths)
         self.total_pulls = 0
         self.eta = str(eta)
+        self.learning_rates = []
 
     def calculate_eta(self, t):
-        n = self.K()
-        eta = eval(self.eta)
+        eta = eval(self.eta, {'t': t, 'k': self.K(), 'K': self.K(), 'n': self.total_pulls, 'sqrt': sqrt, 'log': log})
         return eta
 
     def calculate_probabilities(self):
@@ -157,19 +158,17 @@ class EXP3MultiArmedBandit(MultiArmedBandit):
         return np.random.choice(self.num_paths, p=probabilities)
 
     def pull(self, chosen_arm, reward):
+        # Incrementar la cantidad total de pulls y del brazo seleccionado
         self.total_pulls += 1
         self.arm_pulls[chosen_arm] += 1
         self.rewards.append(reward)
-
+        # Calcular las probabilidades de selección de cada brazo
         probabilities = self.calculate_probabilities()
-
-        # Actualizar S_hat para cada brazo
-        for i in range(self.num_paths):
-            if i == chosen_arm:
-                self.S_hat[i] += 1 - (1 - reward) / probabilities[i]
-            else:
-                self.S_hat[i] += 1
+        eta = self.calculate_eta(self.total_pulls+1)
+        # Actualizar el estimador de recompensas totales Ŝ
+        self.S_hat[chosen_arm] += reward / probabilities[chosen_arm]
         self.update_regret_history(len(self.rewards))
+        self.learning_rates.append(eta)
 
 
 class BoltzmannBandit(MultiArmedBandit):
@@ -179,10 +178,12 @@ class BoltzmannBandit(MultiArmedBandit):
         self.arm_rewards = np.zeros(self.num_paths)
         self.total_pulls = 0
         self.eta = str(eta)
+        self.learning_rates = []
+        
 
     def calculate_eta(self, t):
-        n = self.K()
-        eta = eval(self.eta)
+        eta = eval(self.eta, {'t': t, 'k': self.K(), 'K': self.K(), 'n': self.total_pulls, 'sqrt': sqrt, 'log': log})
+        self.learning_rates.append(eta)
         return eta
 
     def calculate_probabilities(self):
@@ -197,15 +198,15 @@ class BoltzmannBandit(MultiArmedBandit):
     def select_arm(self):
         probabilities = self.calculate_probabilities()
         return np.random.choice(self.num_paths, p=probabilities)
+    
+    def pull(self, chosen_arm, reward):
+        eta = self.calculate_eta(self.total_pulls+1)
+        self.learning_rates.append(eta)
+        return super().pull(chosen_arm, reward)
 
 
 if __name__ == '__main__':
-    import sys
-    import os
 
-    # Añadir el directorio superior a RLib al PYTHONPATH
-    sys.path.append(os.path.abspath(
-        os.path.join(os.path.dirname(__file__), '../..')))
     # print("PYTHONPATH:", sys.path)
 
     from RLib.graphs.perceptron import create_perceptron_graph, plot_network_graph
@@ -238,7 +239,7 @@ if __name__ == '__main__':
         bandit_exp3 = EXP3MultiArmedBandit(path_costs, eta=eta)
         # Crear el Boltzmann Multi-Armed Bandit
         bandit_boltz = BoltzmannBandit(path_costs, eta=eta)
-        
+
         # Realizar entrenamientos
         num_rounds = 500
         train_bandit(bandit_eps, path_lengths, num_rounds, cost_distribution)

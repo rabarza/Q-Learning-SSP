@@ -206,13 +206,14 @@ def plot_results_per_episode_comp_plotly(
         "average reward": ("avg_scores", "avg_scores_best"),
         "avg score": ("avg_scores", "avg_scores_best"),
         "error": ("max_norm_error", None),
-        "max_norm_error_normalized": ("max_norm_error_normalized", None),
-        "policy error": ("max_norm_error_shortest_path", None),
-        "max_norm_error_shortest_path": ("max_norm_error_shortest_path", None),
-        "max_norm_error_shortest_path_normalized": ("max_norm_error_shortest_path_normalized", None),
+        "shortest path error": ("max_norm_error_shortest_path", None),
         "regret": ("regret", None),
         "average regret": ("average_regret", None),
         "optimal paths": ("optimal_paths", None),
+        "max_norm_error_normalized": ("max_norm_error_normalized", None),
+        "max_norm_error_shortest_path_normalized": ("max_norm_error_shortest_path_normalized", None),
+        "normalized error": ("max_norm_error_normalized", None),
+        "normalized shortest path error": ("max_norm_error_shortest_path_normalized", None),
     }
 
     if criteria not in criteria_mapping:
@@ -248,7 +249,6 @@ def plot_results_per_episode_comp_plotly(
                 "episode": list(range(episodes)),
                 criteria: values
             })
-            
 
             # Submuestrear si es necesario
             n = 25
@@ -275,7 +275,7 @@ def plot_results_per_episode_comp_plotly(
 
 
 def plot_results_per_episode_comp_matplotlib(
-    lista: List[QAgentSSP], criteria: str = "avg score", add_label: bool = True, compare_best: bool = False, dpi: int = 150
+    lista: List[QAgentSSP], criteria: str = "nomalized shortest path error", add_label: bool = True, dpi: int = 150
 ):
     '''Genera un gráfico de comparación de resultados por episodio utilizando Matplotlib.
 
@@ -302,11 +302,18 @@ def plot_results_per_episode_comp_matplotlib(
     criteria_mapping = {
         "steps": ("steps", "steps_best"),
         "score": ("scores", "scores_best"),
+        "reward": ("scores", "scores_best"),
+        "average reward": ("avg_scores", "avg_scores_best"),
         "avg score": ("avg_scores", "avg_scores_best"),
         "error": ("max_norm_error", None),
-        "policy error": ("max_norm_error_shortest_path", None),
+        "shortest path error": ("max_norm_error_shortest_path", None),
         "regret": ("regret", None),
         "average regret": ("average_regret", None),
+        "optimal paths": ("optimal_paths", None),
+        "max_norm_error_normalized": ("max_norm_error_normalized", None),
+        "max_norm_error_shortest_path_normalized": ("max_norm_error_shortest_path_normalized", None),
+        "normalized error": ("max_norm_error_normalized", None),
+        "normalized shortest path error": ("max_norm_error_shortest_path_normalized", None),
     }
 
     if criteria not in criteria_mapping:
@@ -325,9 +332,7 @@ def plot_results_per_episode_comp_matplotlib(
             # Ajustar la intensidad del color para cada línea dentro del grupo
             color_actual = ajustar_intensidad_color(color_base, 1 - 0.05 * idx)
 
-            values = getattr(agent, values_attr)
-            values_best = getattr(
-                agent, values_best_attr) if values_best_attr and compare_best else None
+            values = agent.results()[values_attr]
             episodes = agent.num_episodes
 
             label = get_label(agent) if add_label else None
@@ -339,11 +344,6 @@ def plot_results_per_episode_comp_matplotlib(
                 iterations = list(range(episodes))
 
             ax.plot(iterations, values, label=label, color=color_actual)
-
-            if values_best is not None:
-                values_best = values_best[::10]
-                ax.plot(iterations, values_best, label=label +
-                        " (Best)", color=color_actual, linestyle='--')
 
     ax.set_xlabel("Episodios")
     ax.set_ylabel(criteria_name)
