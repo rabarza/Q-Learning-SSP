@@ -1,7 +1,10 @@
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))  # noqa: E402
 import plotly.graph_objects as go
 import networkx as nx
 import random
-
+from RLib.utils.dijkstra import dijkstra_shortest_path
 
 def create_perceptron_graph(nodes_by_layer=[1, 1],
                             min_length=1,
@@ -69,6 +72,28 @@ def create_perceptron_graph(nodes_by_layer=[1, 1],
 
     return perceptron_graph
 
+def create_hard_perceptron_graph(nodes_by_layer=[1, 1], min_length=1, max_length=20, seed=None, costs_distribution=None) -> nx.DiGraph:
+    def remove_edges_to_shortest_path(graph, shortest_path):
+        """Remover los arcos que comienzan en un nodo que no está en el camino más corto y terminan en un nodo que sí está en el camino más corto
+        """
+        edges_to_remove = []
+        for node in graph.nodes:
+            if node in shortest_path:
+                continue
+            # No remover los arcos del nodo inicial y final
+            for neighbor in shortest_path[1:-1]:
+                if graph.has_edge(node, neighbor):
+                    edges_to_remove.append((node, neighbor))
+                    break
+        # Remover los arcos
+        graph.remove_edges_from(edges_to_remove)
+        
+    graph = create_perceptron_graph(nodes_by_layer, min_length, max_length, seed)
+    origin_node = ('Entrada', 0)
+    target_node = ('Salida', 0)
+    _, _, shortest_path = dijkstra_shortest_path(graph, origin_node, target_node, distribution=costs_distribution)
+    remove_edges_to_shortest_path(graph, shortest_path)
+    return graph
 
 def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
     """
@@ -229,3 +254,5 @@ if __name__ == "__main__":
     # Crear un perceptrón con 3 capas y 2 nodos en cada capa
     perceptron_graph = create_perceptron_graph(nodes_by_layer=[1, 2, 10, 2, 1])
     plot_network_graph(perceptron_graph, use_annotations=True, label_pos=0.6)
+    hard_perceptron_graph = create_hard_perceptron_graph(nodes_by_layer=[1, 2, 3, 2, 1], costs_distribution='uniform')
+    plot_network_graph(hard_perceptron_graph, use_annotations=True, label_pos=0.6)

@@ -179,7 +179,7 @@ class SSPEnv:
             actions (list): Lista de acciones posibles en el estado actual
         """
         return list(self.graph[state])
-    
+
     def check_state(self, state) -> bool:
         """Verificar si un estado es válido y/o terminal.
 
@@ -251,33 +251,37 @@ class HardSSPEnv(SSPEnv):
         if shortest_path is None:
             self.shortest_path = nx.shortest_path(
                 self.graph, self.start_state, self.terminal_state)
-        self.edges_reduced = False
         self.reset()
 
     def reset(self):
         self.current_state = self.start_state
         self.current_graph = copy.deepcopy(self.graph)
         self.shortest_path_edges = self.get_path_edges(self.shortest_path)
-        self.edges_reduced = False
-        
+
     def action_set(self, state) -> list:
         return list(self.current_graph[state])
 
-    def remove_shortest_path_edges(self):
-        # print(f"Eliminando arcos del camino más corto")
-        # Remover los arcos del camino más corto excepto el primero y el último
-        self.current_graph.remove_edges_from(self.shortest_path_edges[1:-1])
-        # print(f"Eliminados los arcos del camino más corto: {self.shortest_path_edges}")
-        # self.ensure_largest_component()
-        self.shortest_path_edges = self.get_path_edges(self.shortest_path)
-        self.edges_reduced = True
+    def remove_edges_to_shortest_path(self):
+        """Remover los arcos que comienzan en un nodo que no está en el camino más corto y terminan en un nodo que sí está en el camino más corto
+        """
+        edges_to_remove = []
+        for node in self.current_graph.nodes:
+            if node in self.shortest_path:
+                continue
+            # No remover los arcos del nodo inicial y final
+            for neighbor in self.shortest_path[1:-1]:
+                if self.current_graph.has_edge(node, neighbor):
+                    edges_to_remove.append((node, neighbor))
+                    break
+        # Remover los arcos
+        self.current_graph.remove_edges_from(edges_to_remove)
 
     def ensure_largest_component(self):
         self.current_graph = ox.truncate.largest_component(
             self.current_graph, strongly=True)
 
     def check_state(self, state) -> bool:
-        if self.terminal_state not in self.current_graph.nodes or self.start_state not in self.current_graph.nodes:
+        if self.terminal_state == state:
             return True
         is_terminal_state = super().check_state(state)
         is_connected = nx.has_path(
@@ -297,20 +301,16 @@ class HardSSPEnv(SSPEnv):
                              self.costs_distribution)
         next_state = action if self.current_graph.has_edge(
             state, action) else state
-        
-        already_removed = self.edges_reduced
-        if (state, action) not in self.shortest_path_edges and not already_removed:  
-            self.remove_shortest_path_edges()
 
         terminated = self.check_state(state)
         reward = - cost
         self.current_state = next_state
-        info = str({"estado": state, 
+        info = str({"estado": state,
                     "recompensa": reward,
                     "terminado": terminated})
         return next_state, reward, terminated, info
 
-    
+
 if __name__ == "__main__":
     from RLib.graphs.perceptron import create_perceptron_graph
     G = create_perceptron_graph([1, 10, 10, 1])
