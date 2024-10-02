@@ -314,9 +314,7 @@ class QAgentSSP(QAgent):
                 total_score += reward
                 # Imprimir información de la ejecución
                 print(info) if verbose else None
-
-            path.append(state)  # Agregar el estado terminal al camino
-            # Contar la cantidad de veces que se llegó al camino óptimo
+                
             if path == self.env.shortest_path:
                 optimal_paths_count += 1
             # Calcular el error de la norma máxima entre la tabla Q y la tabla Q*
