@@ -77,7 +77,7 @@ class DynamicEpsilonGreedyActionSelector(ActionSelector):
         return locals()
 
     def select_action(self, agent, state):
-        t = agent.times_states[state]
+        t = agent.visits_states[state]
         epsilon = min(
             1, self.c * agent.num_actions / (self.d**2 * t)
         )  # Epsilon decreases over time
@@ -106,9 +106,9 @@ class UCB1ActionSelector(ActionSelector):
         # Lista de acciones disponibles en el estado actual
         actions = agent.action_set(state)
         # Contador de visitas para cada accion en el estado actual
-        visits_state = agent.times_states[state]
+        visits_state = agent.visits_states[state]
         visits_state_action = np.fromiter(
-            (agent.times_actions[state][action] for action in actions), dtype=float)
+            (agent.visits_actions[state][action] for action in actions), dtype=float)
         # Contar la cantidad de acciones que no han sido escogidas en el estado actual
         not_chosen_actions_idx = np.where(visits_state_action == 0)[0]
         # Si alguna(s) de las acciones aún no ha sido escogida...
@@ -152,9 +152,9 @@ class AsOptUCBActionSelector(ActionSelector):
         # Lista de acciones disponibles en el estado actual
         actions = agent.action_set(state)
         # Contador de visitas para cada accion en el estado actual
-        visits_state = agent.times_states[state]
+        visits_state = agent.visits_states[state]
         visits_state_action = np.fromiter(
-            (agent.times_actions[state][action] for action in actions), dtype=float)
+            (agent.visits_actions[state][action] for action in actions), dtype=float)
         # Contar la cantidad de acciones que no han sido escogidas en el estado actual
         not_chosen_actions_idx = np.where(visits_state_action == 0)[0]
 
@@ -224,7 +224,7 @@ class Exp3ActionSelector(ActionSelector):
 
     def select_action(self, agent, state):
         # Visitas al estado actual
-        t = agent.times_states[state]
+        t = agent.visits_states[state]
         # Número total de episodios (Horizonte de tiempo)
         T = agent.num_episodes
         # Calcular probabilidades de selección de acciones

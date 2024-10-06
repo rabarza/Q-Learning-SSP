@@ -153,7 +153,6 @@ class SSPEnv:
             )
         }  # Diccionario con el número de acciones por estado
         self.adjacency_dict_of_lists = nx.to_dict_of_lists(self.graph)
-        self.q_table = self.dict_states_actions_zeros()
         self.costs_distribution = costs_distribution
         self.shortest_path = shortest_path
 
@@ -226,23 +225,6 @@ class SSPEnv:
                     "recompensa": reward,
                     "terminado": terminated})
         return next_state, reward, terminated, info
-
-    def dict_states_actions_zeros(self) -> Dict[str, Dict[str, float]]:
-        """Crear un diccionario con estados y acciones con valores 0"""
-        return dict_states_actions_zeros(self.graph)
-
-    def dict_states_actions_constant(self, constant) -> Dict[str, Dict[str, float]]:
-        table = dict_states_actions_constant(self.graph, constant)
-        table[self.terminal_state] = {self.terminal_state: 0}
-        return table
-
-    def dict_states_zeros(self) -> Dict[str, float]:
-        """Crear un diccionario con estados con valores 0"""
-        return dict_states_zeros(self.graph)
-
-    def calculate_optimal_qtable(self):
-        """### Calcular la tabla Q óptima"""
-        pass
 
 
 class HardSSPEnv(SSPEnv):
