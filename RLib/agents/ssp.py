@@ -2,10 +2,11 @@ import matplotlib.pyplot as plt
 from RLib.environments.ssp import SSPEnv
 from RLib.utils.tables import max_q_table, max_norm, dict_states_actions_zeros, dict_states_zeros, dict_states_actions_random, dict_states_actions_constant
 from RLib.utils.files import save_model_results
-from RLib.action_selectors import EpsilonGreedyActionSelector
+from RLib.action_selectors import ActionSelector, EpsilonGreedyActionSelector
 from stqdm import stqdm
 from tqdm import tqdm
 from math import sqrt, log  # util para el calculo de la tasa de aprendizaje en eval
+from typing import Dict, Any
 import numpy as np
 import random
 import copy
@@ -31,9 +32,9 @@ class QAgent:
         self.action_selector = EpsilonGreedyActionSelector(epsilon=0.1)
         self.strategy = self.action_selector.strategy
         self.q_table = dict()
-        selfvisitstimes_actions = dict()
-        self.times_states = dict()
-        self.visitsal_episode = 0
+        self.visits_actions = dict()
+        self.visits_states = dict()
+        self.actual_episode = 0
 
     def argmax_q_table(self, state):
         """
@@ -101,13 +102,13 @@ class QAgent:
         """
         Incrementa la cantidad de veces que se visita un estado
         """
-        self.times_states[state] += 1
+        self.visits_states[state] += 1
 
     def increment_times_state_action(self, state, action):
         """
         Incrementa la cantidad de veces que se toma una acción en un estado
         """
-        self.times_actions[state][action] += 1
+        self.visits_actions[state][action] += 1
 
     def get_alpha(self, state, action):
         """
@@ -119,11 +120,11 @@ class QAgent:
         # Reemplazar N(s,a) por t en la fórmula de alpha
         if "N(s,a)" in self.alpha_formula:
             # Realizar conteo de visitas al par estado-acción
-            t = self.times_actions[state][action]
+            t = self.visits_actions[state][action]
             formula = self.alpha_formula.replace("N(s,a)", "t")
         elif "N(s)" in self.alpha_formula:
             # Realizar conteo de visitas al estado
-            t = max(self.times_states[state], 1)
+            t = max(self.visits_states[state], 1)
             formula = self.alpha_formula.replace("N(s)", "t")
         elif "t" in self.alpha_formula:
             t = self.actual_episode + 1
@@ -166,11 +167,11 @@ class QAgentSSP(QAgent):
     def __init__(
         self,
         environment: SSPEnv,
-        alpha=0.01,
-        gamma=1,
-        dynamic_alpha=False,
-        alpha_formula="alpha",
-        action_selector=EpsilonGreedyActionSelector(epsilon=0.1),
+        alpha: float = 0.01,
+        gamma: float = 1,
+        dynamic_alpha: bool = False,
+        alpha_formula: str = "alpha",
+        action_selector: ActionSelector = EpsilonGreedyActionSelector(0.1),
     ):
         """
         Parameters
@@ -225,11 +226,11 @@ class QAgentSSP(QAgent):
 
     def train(
         self,
-        num_episodes=100,
-        shortest_path=None,
-        q_star=None,
-        verbose=False,
-        use_streamlit=False
+        num_episodes: int = 100,
+        shortest_path: list = None,
+        q_star: Dict[Any, Dict[Any, float]] = None,
+        verbose: bool = False,
+        use_streamlit: bool = False
     ) -> None:
         """
         Resuelve el problema del Shortest Path usando el algoritmo Q-Learning
@@ -341,7 +342,7 @@ class QAgentSSP(QAgent):
             if episode % 100 == 0 or episode == num_episodes - 1:
                 progress_bar.write(message)
 
-    def best_path(self, state=None) -> list:
+    def best_path(self, state: Any = None) -> list:
         """Devuelve el mejor camino desde un estado inicial hasta el estado terminal
 
         Parámetros:
@@ -385,293 +386,6 @@ class QAgentSSP(QAgent):
 
         }
         return results
-
-
-class QAgentSSPExp3(QAgentSSP):
-    def __init__(self, *args, eta: str = 'sqrt(t)', **kwargs):
-        """
-        Inicializa un agente Q-Learning usando el enfoque Exp3 para la selección de acciones.
-
-        Parameters
-        ----------
-        environment : SSPEnv
-            Entorno en el que se encuentra el agente.
-
-        alpha : float
-            Tasa de aprendizaje. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
-
-        gamma : float
-            Factor de descuento. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
-
-        dynamic_alpha : bool
-            Indica si se debe utilizar alpha dinámico.
-
-        alpha_formula : str
-            Fórmula para calcular el valor de alpha. Puede ser: 'max(alpha, 1 / N(s,a))', '1 / N(s,a)' o 'alpha'.
-
-        eta : str
-            Parámetro de ajuste de la tasa de aprendizaje. Puede ser 'sqrt(t)' o 'log(t+1)'.
-
-
-        """
-
-        super().__init__(*args, **kwargs)
-        self.action_selector = None
-        self.eta = str(eta)
-        self.S = self.env.dict_states_actions_zeros()
-        self.strategy = 'Bandit-Exp3Q'
-
-    def get_label(self):
-        return f"{self.strategy} - {self.eta}"
-
-    def calculate_probabilities(self, state):
-        t = self.times_states[state]
-        T = self.num_episodes
-        # acciones disponibles en el estado actual
-        actions = self.action_set(state)
-        eta = eval(self.eta, {'t': t, 'T': T, 'sqrt': sqrt,
-                   'log': log, 'A': len(actions)})
-
-        # Obtener los valores de S para el estado actual
-        S_state = np.fromiter(
-            (self.S[state][action] for action in actions), dtype=float)
-        # Los valores de q se normalizan para evitar problemas de overflow (restando el máximo valor de S)
-        max_S = np.max(S_state)
-        exp_values = np.exp((S_state - max_S) * eta)
-        # Calcular probabilidades de selección de acciones
-        probabilities = exp_values / np.sum(exp_values)
-        return probabilities
-
-    def train(self, num_episodes=100, shortest_path=None, q_star=None, verbose=False, use_streamlit=False) -> None:
-        self.num_episodes = num_episodes
-        self.shortest_path = shortest_path
-
-        self.steps = np.zeros(num_episodes)
-        self.scores = np.zeros(num_episodes)
-        self.avg_scores = np.zeros(num_episodes)
-        self.regret = np.zeros(num_episodes)
-        self.average_regret = np.zeros(num_episodes)
-        self.optimal_paths = np.zeros(num_episodes)
-        optimal_paths_count = 0
-        # optimal q table (Q*)
-        self.q_star = q_star
-        # max norm error for all state-action pairs
-        self.max_norm_error = np.zeros(num_episodes)
-        # max_norm_error for shortest path state-action pairs only
-        self.max_norm_error_shortest_path = np.zeros(num_episodes)
-        # discount rate
-        gamma = self.gamma
-        # Estado inicial
-        initial_state = self.env.start_state
-        # optimal cost (used to calculate regret)
-        optimal_cost = max_q_table(q_star, initial_state)
-
-        # Comenzar a entrenar al agente
-        progress_bar = tqdm if not use_streamlit else stqdm
-        episodes_range = progress_bar(
-            range(num_episodes), desc="Completado", ncols=100, leave=True)
-        for episode in episodes_range:
-            self.env.reset()
-            done = False
-            self.actual_episode = episode
-            total_score = 0
-            path = []
-            state = initial_state
-            while not done:
-                path.append(state)
-                # Calcular la probabilidad de exploración
-                p = self.calculate_probabilities(state)
-                actions = self.action_set(state)
-                action_idx = np.random.choice(len(actions), p=p)
-                action = self.action_set(state)[action_idx]
-                argmax_action = self.argmax_q_table(state)
-
-                alpha = self.get_alpha(state, action)
-                next_state, reward, done, info = self.env.take_action(
-                    state, action
-                )
-                # Actualizar valores Q_table
-                q_old = self.q_table[state][action]
-                q_new = q_old * (1 - alpha) + alpha * (
-                    reward + gamma * self.max_q_table(next_state)
-                )
-                # Calcular el valor de ^X
-                hat_X = (q_new - self.max_q_table(state)) / p[action_idx]
-                # hat_X = (reward) / p[action_idx]
-                # Almacenar el nuevo valor de Q(s,a)
-                self.q_table[state][action] = q_new
-                # Actualizar valores de S
-                self.S[state][action] += hat_X
-                # Incrementar cantidad de visitas al estado
-                self.increment_times_state(state)
-                # Ir al estado siguiente
-                state = next_state
-                # Aumentar la cantidad de pasos del episodio
-                self.steps[episode] += 1
-                # Acumular el puntaje obtenido en el episodio
-                total_score += reward
-                # Imprimir información de la ejecución
-                print(info) if verbose else None
-
-            path.append(state)  # Agregar el estado terminal al camino
-            # Contar la cantidad de veces que se llegó al camino óptimo
-            if path == self.env.shortest_path:
-                optimal_paths_count += 1
-            # Calcular el error de la norma máxima entre la tabla Q y la tabla Q*
-            max_norm_error, max_norm_error_shortest_path = self.calculate_max_norm_errors(
-                self.q_table, q_star, shortest_path)
-            # Almacenar el error de la norma máxima
-            self.max_norm_error[episode] = max_norm_error
-            self.max_norm_error_shortest_path[episode] = max_norm_error_shortest_path
-            # Almacenar cantidad promedio de valores q y del episodio
-            self.scores[episode] = total_score
-            self.avg_scores[episode] = np.sum(self.scores[:episode+1])/max(episode, 1)  # noqa: E501
-            # Calcular el regret
-            self.average_regret[episode] = optimal_cost - np.sum(self.scores[:episode+1])/max(episode, 1)  # noqa: E501
-            self.regret[episode] = episode*optimal_cost - np.sum(self.scores[:episode+1])  # noqa: E501
-            self.optimal_paths[episode] = optimal_paths_count
-
-            # Mostrar información de la ejecución
-            message = f"Episodio {episode}/{num_episodes} - Error: {max_norm_error_shortest_path:.2f} - Shortest Path Error: {max_norm_error:.2f}"
-            # Mostrar mensaje en streamlit o en consola
-            episodes_range.set_description(
-                'Episodio {}/{}'.format(episode, num_episodes))
-
-            # Mostrar mensaje en intervalos específicos
-            if episode % 100 == 0 or episode == num_episodes - 1:
-                progress_bar.write(message)
-
-
-class QAgentSSPBanditExp3(QAgentSSP):
-    def __init__(self, *args, eta: str = 'sqrt(t)', **kwargs):
-        """
-        Inicializa un agente Q-Learning usando el enfoque Exp3 para la selección de acciones.
-
-        Parameters
-        ----------
-        environment : SSPEnv
-            Entorno en el que se encuentra el agente.
-
-        alpha : float
-            Tasa de aprendizaje. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
-
-        gamma : float
-            Factor de descuento. Se utiliza en el algoritmo Q-Learning. Debe ser un valor entre 0 y 1.
-
-        dynamic_alpha : bool
-            Indica si se debe utilizar alpha dinámico.
-
-        alpha_formula : str
-            Fórmula para calcular el valor de alpha. Puede ser: 'max(alpha, 1 / N(s,a))', '1 / N(s,a)' o 'alpha'.
-
-        eta : str
-            Parámetro de ajuste de la tasa de aprendizaje. Puede ser 'sqrt(t)' o 'log(t+1)'.
-
-        """
-
-        super().__init__(*args, **kwargs)
-        self.action_selector = None
-        self.eta = str(eta)
-        self.S = self.env.dict_states_actions_zeros()
-        self.strategy = 'Bandit-Exp3'
-
-    def get_label(self):
-        return f"{self.strategy} - {self.eta}"
-
-    def calculate_probabilities(self, state):
-        t = self.times_states[state]
-        T = self.num_episodes
-        # acciones disponibles en el estado actual
-        actions = self.action_set(state)
-        eta = eval(self.eta, {'t': t, 'T': T, 'sqrt': sqrt,
-                   'log': log, 'A': len(actions)})
-
-        # Obtener los valores de S para el estado actual
-        S_state = np.fromiter((self.S[state][action]
-                              for action in actions), dtype=float)
-        max_S = np.max(S_state)
-        exp_values = np.exp((S_state - max_S) * eta)
-        probabilities = exp_values / np.sum(exp_values)
-        return probabilities
-
-    def train(self, num_episodes=100, shortest_path=None, q_star=None, verbose=False, use_streamlit=False) -> None:
-        self.num_episodes = num_episodes
-        self.shortest_path = shortest_path
-
-        self.steps = np.zeros(num_episodes)
-        self.scores = np.zeros(num_episodes)
-        self.avg_scores = np.zeros(num_episodes)
-        self.regret = np.zeros(num_episodes)
-        self.average_regret = np.zeros(num_episodes)
-        self.optimal_paths = np.zeros(num_episodes)
-        optimal_paths_count = 0
-        self.q_star = q_star
-        self.max_norm_error = np.zeros(num_episodes)
-        self.max_norm_error_shortest_path = np.zeros(num_episodes)
-        gamma = self.gamma
-        initial_state = self.env.start_state
-        optimal_cost = max_q_table(q_star, initial_state)
-
-        progress_bar = tqdm if not use_streamlit else stqdm
-        episodes_range = progress_bar(
-            range(num_episodes), desc="Completado", ncols=100, leave=True)
-        for episode in episodes_range:
-            self.env.reset()
-            done = False
-            self.actual_episode = episode
-            total_score = 0
-            path = []
-            state = initial_state
-            while not done:
-                path.append(state)
-                p = self.calculate_probabilities(state)
-                actions = self.action_set(state)
-                action_idx = np.random.choice(len(actions), p=p)
-                action = actions[action_idx]
-
-                alpha = self.get_alpha(state, action)
-                next_state, reward, done, info = self.env.take_action(
-                    state, action)
-
-                q_old = self.q_table[state][action]
-                q_new = q_old * (1 - alpha) + alpha * \
-                    (reward + gamma * self.max_q_table(next_state))
-
-                # Calcula la recompensa ponderada inversamente por la probabilidad de selección
-                hat_X = reward / p[action_idx]
-
-                self.q_table[state][action] = q_new
-                self.S[state][action] += hat_X
-
-                self.increment_times_state(state)
-                state = next_state
-                self.steps[episode] += 1
-                total_score += reward
-                if verbose:
-                    print(info)
-
-            path.append(state)
-            if path == self.env.shortest_path:
-                optimal_paths_count += 1
-            max_norm_error, max_norm_error_shortest_path = self.calculate_max_norm_errors(
-                self.q_table, q_star, shortest_path)
-            self.max_norm_error[episode] = max_norm_error
-            self.max_norm_error_shortest_path[episode] = max_norm_error_shortest_path
-            self.scores[episode] = total_score
-            self.avg_scores[episode] = np.sum(
-                self.scores[:episode+1])/max(episode, 1)
-            self.average_regret[episode] = optimal_cost - \
-                np.sum(self.scores[:episode+1])/max(episode, 1)
-            self.regret[episode] = episode*optimal_cost - \
-                np.sum(self.scores[:episode+1])
-            self.optimal_paths[episode] = optimal_paths_count
-
-            message = f"Episodio {episode}/{num_episodes} - Error: {max_norm_error_shortest_path:.2f} - Shortest Path Error: {max_norm_error:.2f}"
-            episodes_range.set_description(
-                f'Episodio {episode}/{num_episodes}')
-
-            if episode % 100 == 0 or episode == num_episodes - 1:
-                progress_bar.write(message)
 
 
 if __name__ == "__main__":

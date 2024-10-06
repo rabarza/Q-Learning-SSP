@@ -6,13 +6,14 @@ import osmnx as ox
 import json
 import inspect
 from datetime import datetime
+from RLib.agents.ssp import QAgentSSP
 from RLib.utils.dijkstra import get_q_table_for_path
 from RLib.utils.serializers import serialize_table
 
 # ======================= Save and Load =======================
 
 
-def save_model_results(agent, results_path=None):
+def save_model_results(agent: QAgentSSP, results_path: bool = None):
     """
     Guarda el agent en un archivo usando pickle, actualiza el storage_path del agent. Si la carpeta results_path no existe, la crea y guarda el archivo en ella.
     Además, guarda la tabla
@@ -46,7 +47,8 @@ def save_model_results(agent, results_path=None):
     agent_storage_path = os.path.join(results_path, agent_filename)
     q_table_storage_path = os.path.join(results_path, q_table_filename)
     q_table_sp_storage_path = os.path.join(results_path, q_table_sp_filename)
-    visits_storage_path = os.path.join(results_path, visits_state_action_filename)
+    visits_storage_path = os.path.join(
+        results_path, visits_state_action_filename)
     # Obtener la tabla Q para el mejor camino
     shortest_path = agent.shortest_path
     q_table = agent.q_table
@@ -55,7 +57,7 @@ def save_model_results(agent, results_path=None):
     # Serializar la tabla Q para el mejor camino
     serialized_q_table = serialize_table(q_table)
     serialized_q_table_sp = serialize_table(q_table_sp)
-    serialized_visits = serialize_table(agent.times_actions)
+    serialized_visits = serialize_table(agent.visits_actions)
 
     # Guardar el agent en el archivo usando pickle
     with open(agent_storage_path, "wb") as archivo:
@@ -70,7 +72,6 @@ def save_model_results(agent, results_path=None):
     # Guardar la tabla de visitas en el archivo JSON
     with open(visits_storage_path, "w") as archivo:
         json.dump(serialized_visits, archivo, indent=4)
-    
 
 
 def load_model_results(nombre_archivo, ruta_carpeta="results"):
