@@ -33,7 +33,7 @@ def create_perceptron_graph(nodes_by_layer=[1, 1],
         raise TypeError(
             "Los parámetros layers y nodes_by_layer deben ser listas.")
 
-    # Inicializar la semilla para los números aleatorios
+    # Inicializar la semilla para los largos aleatorios
     if seed is not None:
         random.seed(seed)
 
