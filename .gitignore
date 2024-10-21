@@ -18,3 +18,5 @@ results2/
 networks/
 # Json files
 *.json
+# graphs
+*.graphml

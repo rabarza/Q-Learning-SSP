@@ -1,9 +1,13 @@
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))  # noqa: E402
+import networkx as nx
 from RLib.cost_distributions import expected_time
 from RLib.environments.ssp import get_edge_length, get_edge_speed
 from RLib.utils.tables import dict_states_actions_zeros
 from stqdm import stqdm
 from tqdm import tqdm
-from typing import List, Dict, Any
+from typing import List, Dict, Tuple, Any
 
 # ======================= Dijkstra =======================
 
@@ -63,7 +67,8 @@ def dijkstra_shortest_path(graph, source, target, avg_speed=25, distribution="lo
                 shortest_distances[neighbor] = distance
                 parents[neighbor] = current_node
 
-    shortest_path = get_shortest_path_from_parents(parents, source, target)
+    shortest_path = get_shortest_path_from_parents(
+        parents, source, target) if target else None
     return shortest_distances, parents, shortest_path
 
 
@@ -90,6 +95,70 @@ def get_shortest_path_from_parents(parents, source, target):
         shortest_path.append(nodo_actual)
     shortest_path.reverse()
     return shortest_path
+
+
+def get_optimal_policy_and_q_star(graph: nx.MultiDiGraph, dest_node: Any, distribution: str = "lognormal", st: bool = False) -> Tuple[Dict[Any, Any], Dict[Any, Dict[Any, float]]]:
+    """
+    Calcula la política óptima y la tabla Q* realizando una búsqueda de Dijkstra desde el nodo de destino.
+
+    Parameters
+    ----------
+    graph: networkx.classes.multidigraph.MultiDiGraph
+        grafo de una ciudad
+    dest_node: int
+        nodo de destino
+
+    Returns
+    -------
+    policy: dict
+        Diccionario con la política óptima para cada nodo del grafo. Tiene la forma {nodo: acción, ..., nodo: acción}.
+    Q_star: dict
+        Diccionario con la tabla Q*. Tiene la forma {nodo: {acción: costo, ..., acción: costo}, ..., nodo: {...}}.
+    """
+    # Invertir el grafo
+    graph_reversed = graph.reverse()
+
+    # Realizar Dijkstra desde el nodo de destino en el grafo invertido
+    distancias, padres, _ = dijkstra_shortest_path(
+        graph_reversed, dest_node, None, distribution=distribution
+    )
+
+    # Inicializar la tabla Q* y la política óptima
+    Q_star = {}
+    policy = {}
+
+    # Barra de progreso (loading bar)
+    progress_bar = stqdm(graph.nodes(), desc="Calculando tabla Q y política óptima") if st else tqdm(
+        graph.nodes(), desc="Calculando tabla Q y política óptima")
+
+    # Iterar sobre todos los nodos
+    for s in progress_bar:
+        Q_star[s] = {}
+        best_action = None
+        best_cost = -float('inf')
+
+        for a in graph.neighbors(s):
+            # El costo de (s, a) es el costo del arco más el costo óptimo desde 'a' hasta el destino
+            arc_length = get_edge_length(graph, s, a)
+            arc_speed = get_edge_speed(graph, s, a)
+            time = expected_time(arc_length, arc_speed, distribution)
+            # Suma el costo de la acción 'a' y luego sigue el camino óptimo
+            # Se considera costo negativo
+            Q_star[s][a] = -(time + distancias[a])
+
+            # Determinar la mejor acción para la política óptima
+            if Q_star[s][a] > best_cost:
+                best_cost = Q_star[s][a]
+                best_action = a
+
+        # La política óptima en el estado s es la acción con el menor costo en Q*
+        policy[s] = best_action
+
+    # En el nodo de destino, la acción óptima es quedarse en el destino
+    policy[dest_node] = dest_node
+    Q_star[dest_node] = {dest_node: 0}
+
+    return policy, Q_star
 
 
 def get_shortest_path_from_policy(policy, source, target):
@@ -141,50 +210,6 @@ def get_path_as_stateactions_dict(path):
     return path_dict
 
 
-def get_optimal_policy(grafo, dest_node, distribution="lognormal"):
-    """
-    Calcula la política óptima completa para cada nodo del grafo realizando una búsqueda de Dijkstra desde cada nodo.
-
-    Parameters
-    ----------
-    grafo: networkx.classes.multidigraph.MultiDiGraph
-        grafo de una ciudad
-    dest_node: int
-        nodo de destino
-
-    Returns
-    -------
-    policies: dict
-        diccionario con las política óptima para cada nodo del grafo. Tiene la forma {nodo: política, ..., nodo: política}
-    """
-    if "expectation" in distribution:
-        distribution = distribution.split("-")[1]
-    # Iniciliazar el conjunto de nodos visitados
-    visited_nodes = set()
-    # Inicializar el conjunto de nodos restantes
-    remaining_nodes = set(grafo.nodes())
-    # Inicializar el diccionario de política
-    policy = {}
-
-    while remaining_nodes:
-        # Seleccionar un nodo no visitado
-        source_node = next(node for node in remaining_nodes)
-        # Realizar una búsqueda de Dijkstra desde el nodo seleccionado como source_node
-        distancias, padres, shortest_path = dijkstra_shortest_path(
-            grafo, source_node, dest_node, distribution=distribution
-        )
-        shortest_path_as_dict = get_path_as_stateactions_dict(shortest_path)
-        # Agrega todas las llaves y valores del diccionario shortest_path_as_dict al diccionario policy
-        policy.update(shortest_path_as_dict)
-        # Agraga todos los nodos visitados al conjunto de nodos visitados
-        visited_nodes.update(shortest_path)
-        # Elimina todos los nodos visitados del conjunto de nodos restantes
-        remaining_nodes.difference_update(visited_nodes)
-    # Agrega el nodo de destino a la política
-    policy[dest_node] = dest_node
-    return policy
-
-
 def get_qtable_for_semipolicy(graph, policy, dest):
     """
     Retorna la tabla Q óptima para la política óptima.
@@ -210,47 +235,6 @@ def get_qtable_for_semipolicy(graph, policy, dest):
     return q_table
 
 
-def get_q_table_for_policy(graph, policy, dest_node, distribution, st=False):
-    """Dado un grafo, una política óptima y un nodo de destino, se calcula la tabla Q óptima para la política óptima
-    Tiene la forma {estado: {accion: valor, ..., accion: valor}, ..., estado: {accion: valor, ..., accion: valor}}
-    """
-    from RLib.environments.ssp import get_edge_cost, get_cumulative_edges_cost
-    if "expectation" in distribution:
-        distribution = distribution.split("-")[1]
-    else:
-        pass
-
-    q_star = dict_states_actions_zeros(graph)
-
-    if st:
-        for state in stqdm(q_star.keys(), desc="Calculando tabla Q"):
-            if state == dest_node:
-                continue
-            for action in q_star[state].keys():
-                # Como se está trabajando con la esperanza de la distribución, se debe considerar el tiempo esperado de viaje
-                tij = get_edge_cost(graph, state, action,
-                                    "expectation-"+distribution)
-                q_star[state][action] = - (
-                    tij +
-                    get_cumulative_edges_cost(
-                        graph, policy, action, dest_node, "expectation-"+distribution)
-                )
-    else:
-        for state in tqdm(q_star.keys(), desc="Calculando tabla Q"):
-            if state == dest_node:
-                continue
-            for action in q_star[state].keys():
-                tij = get_edge_cost(graph, state, action,
-                                    "expectation-"+distribution)
-                q_star[state][action] = -(
-                    tij +
-                    get_cumulative_edges_cost(
-                        graph, policy, action, dest_node, distribution="expectation-"+distribution)
-                )
-    q_star[dest_node][dest_node] = 0
-    return q_star
-
-
 def get_q_table_for_path(q_table: Dict[Any, Dict[Any, float]], path: List[Any]) -> Dict[Any, Dict[Any, float]]:
     """Dado un camino y una tabla Q,  retorna la tabla Q con los pares estado-acción restringidos a sólo los nodos del camino, es decir, sólo los nodos que conforman el camino más corto entre el nodo de inicio y el nodo de destino. 
 
@@ -270,3 +254,30 @@ def get_q_table_for_path(q_table: Dict[Any, Dict[Any, float]], path: List[Any]) 
         q_table_for_path[node] = {next_node: q_table[node][next_node]}
     q_table_for_path[path[-1]] = {path[-1]: 0}
     return q_table_for_path
+
+
+if __name__ == '__main__':
+
+    # Ejemplo de calculo de política óptima y tabla Q*
+    grafo = nx.MultiDiGraph()
+
+    # Añadir nodos y aristas con pesos al grafo
+    edges = [
+        (0, 1, {'length': 10, 'speed_kph': 25}),
+        (0, 2, {'length': 15, 'speed_kph': 30}),
+        (1, 3, {'length': 12, 'speed_kph': 25}),
+        (2, 3, {'length': 10, 'speed_kph': 30}),
+        (1, 2, {'length': 5, 'speed_kph': 35}),
+        (3, 4, {'length': 7, 'speed_kph': 20}),
+    ]
+
+    grafo.add_edges_from(edges)
+
+    target_node = 4
+    costs_distribution = "uniform"
+    policy, optimal_q_table = get_optimal_policy_and_q_star(
+        grafo, target_node, costs_distribution)
+    print("Política óptima:")
+    print(policy)
+    print("Tabla Q*:")
+    print(optimal_q_table)

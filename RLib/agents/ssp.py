@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from RLib.environments.ssp import SSPEnv
 from RLib.utils.tables import max_q_table, max_norm, dict_states_actions_zeros, dict_states_zeros, dict_states_actions_random, dict_states_actions_constant
-from RLib.utils.files import save_model_results
 from RLib.action_selectors import ActionSelector, EpsilonGreedyActionSelector
 from stqdm import stqdm
 from tqdm import tqdm
@@ -154,6 +153,7 @@ class QAgent:
         """
         Guardar el agente en un archivo .pkl y los resultados en un archivo .json
         """
+        from RLib.utils.files import save_model_results
         alpha_type = "dynamic" if self.dynamic_alpha else "constant"
         save_path = os.path.join(path, f"{alpha_type}_alpha/{self.strategy}/")  # noqa: E501
         save_model_results(self, save_path)
@@ -304,7 +304,7 @@ class QAgentSSP(QAgent):
                 )
                 # print(f"q_old: {q_old}, q_new: {q_new}, alpha: {alpha}, reward: {reward}, visits: {selfvisitstimes_actions[state][action]}")
                 # Almacenar el nuevo valor de Q(s,a)
-                self.q_table[state][action] = visitsw
+                self.q_table[state][action] = q_new
                 # Incrementar cantidad de visitas al estado
                 self.increment_times_state(state)
                 # Ir al estado siguiente
