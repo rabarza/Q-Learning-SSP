@@ -55,7 +55,7 @@ class EpsilonGreedyActionSelector(ActionSelector):
         return f"ε = {self.epsilon}"
 
 
-class DynamicEpsilonGreedyActionSelector(ActionSelector):
+class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
     """
     Extracted from: Bubeck 2012, "Regret Analysis of Stochastic and Nonstochastic Multi-armed Bandit Problems" 2.4.5
     """
@@ -224,15 +224,15 @@ class Exp3ActionSelector(ActionSelector):
 
     def select_action(self, agent, state):
         # Visitas al estado actual
-        t = agent.visits_states[state]
+        t = agent.actual_episode
         # Número total de episodios (Horizonte de tiempo)
         T = agent.num_episodes
         # Calcular probabilidades de selección de acciones
         actions = agent.action_set(state)
         actions_idx = np.arange(len(actions))
         # Evaluar eta en función del tiempo y el número de episodios
-        eta = eval(self.eta, {'t': t, 'T': T, 'sqrt': sqrt,
-                   'log': log, 'A': len(actions)})
+        params = {'t': t, 'T': T, 'sqrt': sqrt, 'log': log, 'A': len(actions), 'n(s)': agent.visits_states[state], 'n(s,a)': agent.visits_actions[state]}	
+        eta = eval(self.eta, params)
         probabilities = self.calculate_probabilities(agent, state, eta)
         try:
             # Muestrear acción de acuerdo a la distribución generada
