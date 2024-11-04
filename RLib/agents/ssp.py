@@ -224,6 +224,23 @@ class QAgentSSP(QAgent):
     def __repr__(self) -> str:
         return self.__str__()
 
+    def update_q_table(
+        self,
+        state: Any,
+        action: Any,
+        reward: float,
+        next_state: Any,
+        gamma: float
+    ) -> None:
+        """
+        Actualiza el valor de Q(s,a) en la tabla Q
+        """
+        q_old = self.q_table[state][action]
+        q_new = q_old * (1 - self.alpha) + self.alpha * (
+            reward + gamma * self.max_q_table(next_state)
+        )
+        self.q_table[state][action] = q_new
+
     def train(
         self,
         num_episodes: int = 100,
@@ -298,13 +315,7 @@ class QAgentSSP(QAgent):
                 )
 
                 # Actualizar valores Q_table
-                q_old = self.q_table[state][action]
-                q_new = q_old * (1 - alpha) + alpha * (
-                    reward + gamma * self.max_q_table(next_state)
-                )
-                # print(f"q_old: {q_old}, q_new: {q_new}, alpha: {alpha}, reward: {reward}, visits: {selfvisitstimes_actions[state][action]}")
-                # Almacenar el nuevo valor de Q(s,a)
-                self.q_table[state][action] = q_new
+                self.update_q_table(state, action, reward, next_state, gamma)
                 # Incrementar cantidad de visitas al estado
                 self.increment_times_state(state)
                 # Ir al estado siguiente
@@ -367,7 +378,7 @@ class QAgentSSP(QAgent):
         return path
 
     def results(self):
-        # make a dictionary with the results
+        # Devuelve los resultados como diccionario
         optimal_cost = max_q_table(self.q_star, self.env.start_state)
         results = {
             "strategy": self.strategy,
