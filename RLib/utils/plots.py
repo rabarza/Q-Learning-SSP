@@ -262,6 +262,7 @@ def plot_results_per_episode_comp_plotly(
                     mode="lines",
                     name=label,
                     line=dict(color=color_actual),
+                    hovertext=label,
                 )
             )
 
@@ -269,6 +270,10 @@ def plot_results_per_episode_comp_plotly(
         xaxis_title="Episodios",
         yaxis_title=criteria_name,
         title=dict(text="Comparación de Resultados por Episodio"),
+        extendiciclecolors=True,
+        hoverlabel=dict(
+            font_size=16,
+        )
     )
 
     return fig
