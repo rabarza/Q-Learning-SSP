@@ -13,7 +13,7 @@ from RLib.utils.serializers import serialize_table
 # ======================= Save and Load =======================
 
 
-def save_model_results(agent: QAgentSSP, results_path: bool = None):
+def save_model_results(agent: QAgentSSP, results_path: str = None):
     """
     Guarda el agent en un archivo usando pickle, actualiza el storage_path del agent. Si la carpeta results_path no existe, la crea y guarda el archivo en ella.
     Además, guarda la tabla
@@ -37,7 +37,7 @@ def save_model_results(agent: QAgentSSP, results_path: bool = None):
     # Obtener la fecha y hora actual
     fecha_hora_actual = datetime.now()
     # Formatear la fecha y hora como una cadena
-    fecha_hora_str = fecha_hora_actual.strftime("%Y-%m-%d_%H-%M-%S")
+    fecha_hora_str = fecha_hora_actual.strftime("%H-%M-%S_%d-%m-%y")
     # Crear el nombre del archivo con la fecha y hora
     agent_filename = f"QAgentSSP_{agent.strategy}_{agent.num_episodes}_{agent.env.costs_distribution}_{fecha_hora_str}.pickle"
     q_table_filename = f"QTable_{agent.strategy}_{agent.num_episodes}_{agent.env.costs_distribution}_{fecha_hora_str}.json"
@@ -52,8 +52,7 @@ def save_model_results(agent: QAgentSSP, results_path: bool = None):
     # Obtener la tabla Q para el mejor camino
     shortest_path = agent.shortest_path
     q_table = agent.q_table
-    q_table_sp = get_q_table_for_path(
-        q_table, shortest_path)  # Q table for shortest path
+    q_table_sp = get_q_table_for_path(q_table, shortest_path)  # Q table for shortest path # noqa: E501
     # Serializar la tabla Q para el mejor camino
     serialized_q_table = serialize_table(q_table)
     serialized_q_table_sp = serialize_table(q_table_sp)
