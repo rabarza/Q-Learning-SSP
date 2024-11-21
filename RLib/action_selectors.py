@@ -22,7 +22,7 @@ class ActionSelector(object):
 
     def select_action(self, agent, state):
         raise NotImplementedError()
-    
+
     def action_set(self, agent, state):
         return agent.action_set(state)
 
@@ -55,6 +55,36 @@ class EpsilonGreedyActionSelector(ActionSelector):
         return f"ε = {self.epsilon}"
 
 
+class EpsilonGreedyDecayActionSelector(ActionSelector):
+    @auto_super_init
+    def __init__(self, constant=0.99):
+        """epsilon(t) = constant / (n(s) + 1), donde n(s) es el número de visitas al estado s. La constante es un valor entre 0 y 1."""
+        self.constant = constant
+        self.strategy = "e-decay-RM"
+        return locals()  # Dictionary with the local variables
+
+    def select_action(self, agent, state):
+        t = agent.visits_states[state]
+        epsilon = self.constant / (t + 1)
+        greedy_action = agent.argmax_q_table(state)
+        explore_action = agent.random_action(state)
+        num = np.random.random()  # Se genera un número aleatorio entre 0 y 1
+        # Se explora con probabilidad epsilon y se explota con probabilidad 1-epsilon
+        return explore_action if num <= epsilon else greedy_action
+
+    def get_probabilities(self, agent, state):
+        """Return the probabilities of selecting each action in the state. Used for debugging purposes"""
+        t = agent.visits_states[state]
+        epsilon = self.constant / (t + 1)
+        actions = agent.action_set(state)
+        greedy_action = agent.argmax_q_table(state)
+        probabilities = dict(zip(actions, [epsilon/len(actions) if action != greedy_action else 1 - epsilon + epsilon/len(actions) for action in actions]))
+        return probabilities
+
+    def get_label(self):
+        return f"c = {self.constant}"
+
+
 class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
     """
     Extracted from: Bubeck 2012, "Regret Analysis of Stochastic and Nonstochastic Multi-armed Bandit Problems" 2.4.5
@@ -73,7 +103,7 @@ class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
         """
         self.c = c
         self.d = d
-        self.strategy = "e-decay"
+        self.strategy = "e-decay-Bubeck"
         return locals()
 
     def select_action(self, agent, state):
@@ -209,42 +239,47 @@ class Exp3ActionSelector(ActionSelector):
         self.strategy = "exp3"
         return locals()
 
-    def calculate_probabilities(self, agent, state, eta):
-        # acciones disponibles en el estado actual
-        actions = agent.action_set(state)
-        # Obtener los valores de q para cada acción a partir del estado s
-        q_state = np.fromiter(
-            (agent.q_table[state][action] for action in actions), dtype=float)
+    def calculate_probabilities(self, q_values, eta):
         # Los valores de q se normalizan para evitar problemas de overflow (restando el máximo valor de q)
-        max_q = np.max(q_state)
-        exp_values = np.exp((q_state - max_q) * eta)
+        max_q = np.max(q_values)
+        exp_values = np.exp((q_values - max_q) * eta)
         # Calcular probabilidades de selección de acciones
         probabilities = exp_values / np.sum(exp_values)
+        self.probabilities = probabilities
         return probabilities
+    
+    def get_probabilities(self, agent, state):
+        """Return the probabilities of selecting each action in the state. Used for debugging purposes"""
+        return dict(zip(agent.action_set(state), self.probabilities))
 
     def select_action(self, agent, state):
         # Visitas al estado actual
         t = agent.actual_episode
         # Número total de episodios (Horizonte de tiempo)
         T = agent.num_episodes
-        # Calcular probabilidades de selección de acciones
+        # acciones disponibles en el estado actual
         actions = agent.action_set(state)
-        actions_idx = np.arange(len(actions))
+        q_values = np.fromiter(
+            (agent.q_table[state][action] for action in actions), dtype=float)
+        q_value_range = np.ptp(q_values)  # peak-to-peak value (max - min)
         # Evaluar eta en función del tiempo y el número de episodios
-        params = {'t': t, 'T': T, 'sqrt': sqrt, 'log': log, 'A': len(actions), 'n(s)': agent.visits_states[state], 'n(s,a)': agent.visits_actions[state]}	
+        params = {'t': t, 'T': T,
+                  'sqrt': sqrt, 'log': log,
+                  'A': len(actions),
+                  'n_s': max(agent.visits_states[state], 1),
+                  'q_range': max(q_value_range, 0.001),
+                  }
         eta = eval(self.eta, params)
-        probabilities = self.calculate_probabilities(agent, state, eta)
+        # Calcular probabilidades de selección cada acción
+        probabilities = self.calculate_probabilities(q_values, eta)
         try:
-            # Muestrear acción de acuerdo a la distribución generada
             # Se utiliza el índice para evitar problemas de tipo de datos en el muestreo
-            action_idx = np.random.choice(
-                actions_idx, p=probabilities)
-            action = actions[action_idx]
+            action_idx = np.random.choice(len(actions), p=probabilities)
+            return actions[action_idx]
         except ValueError:
             raise ValueError(
                 f"Error al seleccionar acción en estado {state}. Probabilidades: {probabilities}. Acciones: {actions}"
             )
-        return action
 
     def get_label(self):
         return f"η = {self.eta}"
