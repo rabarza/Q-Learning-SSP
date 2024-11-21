@@ -116,7 +116,7 @@ def get_optimal_policy_and_q_star(graph: nx.MultiDiGraph, dest_node: Any, distri
         Diccionario con la tabla Q*. Tiene la forma {nodo: {acción: costo, ..., acción: costo}, ..., nodo: {...}}.
     """
     # Invertir el grafo
-    graph_reversed = graph.reverse()
+    graph_reversed = graph.reverse(copy=True)
 
     # Realizar Dijkstra desde el nodo de destino en el grafo invertido
     distancias, padres, _ = dijkstra_shortest_path(
@@ -135,20 +135,21 @@ def get_optimal_policy_and_q_star(graph: nx.MultiDiGraph, dest_node: Any, distri
     for s in progress_bar:
         Q_star[s] = {}
         best_action = None
-        best_cost = -float('inf')
+        best_cost = float('inf')
 
         for a in graph.neighbors(s):
             # El costo de (s, a) es el costo del arco más el costo óptimo desde 'a' hasta el destino
             arc_length = get_edge_length(graph, s, a)
             arc_speed = get_edge_speed(graph, s, a)
             time = expected_time(arc_length, arc_speed, distribution)
-            # Suma el costo de la acción 'a' y luego sigue el camino óptimo
-            # Se considera costo negativo
-            Q_star[s][a] = -(time + distancias[a])
+            total_cost = time + distancias.get(a, float('inf'))
+
+            # Guardar el costo en la tabla Q*
+            Q_star[s][a] = -total_cost
 
             # Determinar la mejor acción para la política óptima
-            if Q_star[s][a] > best_cost:
-                best_cost = Q_star[s][a]
+            if total_cost < best_cost:
+                best_cost = total_cost
                 best_action = a
 
         # La política óptima en el estado s es la acción con el menor costo en Q*
