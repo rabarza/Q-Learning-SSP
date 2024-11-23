@@ -18,7 +18,8 @@ class ActionSelector(object):
     """Abstract class for action selection strategies"""
 
     def __init__(self, **kwargs):
-        self.params = kwargs
+        self.params = kwargsgit
+        self.strategy = ""
 
     def select_action(self, agent, state):
         raise NotImplementedError()
@@ -75,7 +76,7 @@ class EpsilonGreedyDecayActionSelector(ActionSelector):
     def get_probabilities(self, agent, state):
         """Return the probabilities of selecting each action in the state. Used for debugging purposes"""
         t = agent.visits_states[state]
-        epsilon = self.constant / (t + 1)
+        epsilon = self.constant / (t + self.constant)
         actions = agent.action_set(state)
         greedy_action = agent.argmax_q_table(state)
         probabilities = dict(zip(actions, [epsilon/len(actions) if action != greedy_action else 1 - epsilon + epsilon/len(actions) for action in actions]))
