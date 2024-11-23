@@ -12,7 +12,6 @@ from math import sqrt, log  # util para el calculo de la tasa de aprendizaje en 
 from typing import Dict, Any
 import numpy as np
 import random
-import copy
 
 
 class QAgent:
@@ -20,22 +19,43 @@ class QAgent:
     Clase base para el agente Q-Learning.
     """
 
-    def __init__(self):
-        self.storage_path = None  # donde se guardan los resultados
+    def __init__(self,
+                 alpha: Union[str, float] = 0.1,
+                 gamma: float = 1,
+                 action_selector: ActionSelector = EpsilonGreedyActionSelector(0.1)):
+        """
+        Parameters
+        ----------
+        alpha: Union[str, float]
+            fórmula para calcular el valor de alpha. Puede ser cualquier expresión matemática válida que contenga las variables 'N(s,a)', 'N(s)', 't', 'sqrt' y 'log'.
+            ej: '1 / N(s,a)', '1000 / (N(s) + 1000)', '1 / sqrt(N(s,a))', '1 / log(N(s,a) + 1)', etc.
+
+        gamma: float
+            factor de descuento. Debe ser un valor entre 0 y 1.
+
+        action_selector: ActionSelector (objeto de la clase ActionSelector)
+            selector de acciones.
+        """
         self.env = None
-        self.alpha = None
-        self.gamma = None
-        self.dynamic_alpha = self.is_dynamic_alpha(self.alpha)
-        self.alpha_type = "dynamic" if self.dynamic_alpha else "constant"
-        self.action_selector = EpsilonGreedyActionSelector(epsilon=0.1)
+        self.alpha = alpha
+        self.gamma = gamma
+        self.action_selector = action_selector
         self.strategy = self.action_selector.strategy
         self.q_table = dict()
         self.visits_actions = dict()
         self.visits_states = dict()
         self.actual_episode = 0
+        # Inicializar dynamic_alpha y alpha_type después de establecer alpha
+        self.dynamic_alpha = self.is_dynamic_alpha(self.alpha)
+        self.alpha_type = "dynamic" if self.dynamic_alpha else "constant"
+        self.alpha_eval_expr = str(alpha) \
+            .replace('N(s,a)', 'N_sa') \
+            .replace('N(s)', 'N_s')
+        # donde se guardan los resultados del entrenamiento
+        self.storage_path = None
 
     def __str__(self) -> str:
-        return f"{agent.__class__.__name__}(strategy={self.action_selector} alpha_type={self.alpha_type}, discount={self.gamma})"   # noqa: E501
+        return f"{self.__class__.__name__}(strategy={self.action_selector} alpha_type={self.alpha_type}, discount={self.gamma})"   # noqa: E501
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -44,9 +64,23 @@ class QAgent:
     def is_dynamic_alpha(alpha):
         try:
             float(alpha)
-            return True
-        except TypeError or ValueError:
             return False
+        except ValueError or TypeError:
+            return True
+
+    def eval_alpha(self, state, action):
+        """
+        Retorna el valor de alpha para el estado y acción indicados en el tiempo de actualización.
+        """
+        context = {
+            'N_sa': self.visits_actions[state][action] + 1,
+            'N_s': self.visits_states[state] + 1,
+            't': self.actual_episode + 1,
+            'sqrt': sqrt,
+            'log': log,
+
+        }
+        return eval(self.alpha_eval_expr, context)
 
     def argmax_q_table(self, state):
         """
@@ -122,20 +156,6 @@ class QAgent:
         """
         self.visits_actions[state][action] += 1
 
-    def get_alpha(self, state, action):
-        """
-        Retorna el valor de alpha para el estado y acción indicados.
-        """
-        params = {
-            'N(s,a)': self.visits_actions[state][action] + 1,
-            'N(s)': self.visits_states[state] + 1,
-            't': self.actual_episode + 1,
-            'sqrt': sqrt, 'log': log
-        }
-        # Evalúa la fórmula de alpha
-        alpha_value = eval(self.alpha, params)
-        return alpha_value
-
     def select_action(self, state):
         """
         Seleccionar la siguiente acción a tomar
@@ -176,6 +196,18 @@ class QAgent:
         self.update_steps_and_scores(steps, score)
         self.update_regret(episode, optimal_cost)
 
+    def update_q_table(self, state: Any, action: Any, reward: float, next_state: Any) -> None:
+        """
+        Actualiza el valor de Q(s,a) en la tabla Q
+        """
+        alpha = self.eval_alpha(state, action)
+        gamma = self.gamma
+        q_old = self.q_table[state][action]
+        q_new = q_old * (1 - alpha) + alpha * (
+            reward + gamma * self.max_q_table(next_state)
+        )
+        self.q_table[state][action] = q_new
+
     def save(self, path: str):
         """
         Guardar el agente en un archivo .pkl y los resultados en un archivo .json
@@ -194,8 +226,8 @@ class QAgentSSP(QAgent):
     def __init__(
         self,
         environment: SSPEnv,
-        gamma: float = 1,
         alpha: Union[str, float] = 0.1,
+        gamma: float = 1,
         action_selector: ActionSelector = EpsilonGreedyActionSelector(0.1),
     ):
         """
@@ -205,25 +237,20 @@ class QAgentSSP(QAgent):
         environment: SSPEnv (objeto de la clase SSPEnv)
             entorno en el que se encuentra el agente.
 
+        alpha: Union[str, float]
+            fórmula para calcular el valor de alpha. Puede ser cualquier expresión matemática válida que contenga las variables `N(s,a)`, `N(s)`, `t`, `sqrt`, o `log`.
+            Ej: '1 / N(s,a)', '1000 / (N(s) + 1000)', '1 / sqrt(N(s,a))', '1 / log(N(s,a))', etc.
+
         gamma: float
             factor de descuento. Debe ser un valor entre 0 y 1.
 
-        alpha: Union[str, float]
-            fórmula para calcular el valor de alpha. Puede ser cualquier expresión matemática válida que contenga las variables 'N(s,a)', 'N(s)', 't', 'sqrt' y 'log'.
-            ej: '1 / N(s,a)', '1000 / (N(s) + 1000)', '1 / sqrt(N(s,a))', '1 / log(N(s,a) + 1)', etc.
-
         action_selector: ActionSelector (objeto de la clase ActionSelector)
             selector de acciones.
-
         """
-        super().__init__()
+        super().__init__(alpha=alpha, gamma=gamma, action_selector=action_selector)
         self.env = environment
         self.num_states = environment.num_states
         self.num_actions = environment.num_actions
-        self.alpha = alpha
-        self.gamma = gamma
-        self.action_selector = action_selector
-        self.strategy = action_selector.strategy
         # Se cuenta la cantidad de veces que se tomo una accion en cada estado N(s,a)
         self.visits_actions = dict_states_actions_zeros(self.env.graph)
         # Se cuenta la cantidad de veces que se visita un estado N(s)
@@ -235,25 +262,19 @@ class QAgentSSP(QAgent):
 
         self.id = id(self)
 
-    def update_q_table(
-        self,
-        state: Any,
-        action: Any,
-        reward: float,
-        next_state: Any,
-        *args,
-        **kwargs
-    ) -> None:
-        """
-        Actualiza el valor de Q(s,a) en la tabla Q
-        """
-        alpha = self.get_alpha(state, action)
-        gamma = self.gamma
-        q_old = self.q_table[state][action]
-        q_new = q_old * (1 - alpha) + alpha * (
-            reward + gamma * self.max_q_table(next_state)
-        )
-        self.q_table[state][action] = q_new
+    def initialize_results(self):
+        """Inicializa los contenedores para almacenar los resultados del entrenamiento."""
+        super().initialize_results()
+        self.optimal_paths = []
+        self.max_norm_error = []
+        self.max_norm_error_shortest_path = []
+
+    def update_results(self, episode, steps, score, optimal_cost, max_norm_error, max_norm_error_shortest_path, optimal_paths):
+        """Actualiza los resultados después de cada episodio."""
+        super().update_results(episode, steps, score, optimal_cost)
+        self.max_norm_error.append(max_norm_error)
+        self.max_norm_error_shortest_path.append(max_norm_error_shortest_path)  # noqa: E501
+        self.optimal_paths.append(optimal_paths)
 
     def train(
         self,
@@ -288,7 +309,6 @@ class QAgentSSP(QAgent):
         self.num_episodes = num_episodes
         self.shortest_path = shortest_path
 
-        optimal_paths_count = 0
         # optimal q table (Q*)
         self.q_star = q_star
 
@@ -296,6 +316,7 @@ class QAgentSSP(QAgent):
         initial_state = self.env.start_state
         # optimal cost (used to calculate regret)
         optimal_cost = max_q_table(q_star, initial_state)
+        optimal_paths_count = 0
 
         # Comenzar a entrenar al agente
         progress_bar = tqdm if not use_streamlit else stqdm
@@ -341,29 +362,16 @@ class QAgentSSP(QAgent):
                                 max_norm_error,
                                 max_norm_error_shortest_path,
                                 optimal_paths_count)
-
+            normalized_error = max_norm_error / -optimal_cost
+            normalized_error_shortest_path = max_norm_error_shortest_path / -optimal_cost
             # Mostrar información de la ejecución
-            message = f"Episodio {episode}/{num_episodes} - Pasos: {self.steps[episode]} - Max norm error: {max_norm_error:.3f} - Max norm error path: {max_norm_error_shortest_path:.3f}"
+            message = f"Episodio {episode}/{num_episodes} - Pasos: {self.steps[episode]} - Max norm error: {normalized_error:.3f} - Max norm error path: {normalized_error_shortest_path:.3f}"
             # Mostrar mensaje en streamlit o en consola
             episodes_range.set_description(
                 'Episodio {}/{}'.format(episode, num_episodes))
             # Mostrar mensaje en intervalos específicos
             if episode % 100 == 0 or episode == num_episodes - 1:
                 progress_bar.write(message)
-
-    def initialize_results(self):
-        """Inicializa los contenedores para almacenar los resultados del entrenamiento."""
-        super().initialize_results()
-        self.optimal_paths = []
-        self.max_norm_error = []
-        self.max_norm_error_shortest_path = []
-
-    def update_results(self, episode, steps, score, optimal_cost, max_norm_error, max_norm_error_shortest_path, optimal_paths):
-        """Actualiza los resultados después de cada episodio."""
-        super().update_results(episode, steps, score, optimal_cost)
-        self.max_norm_error.append(max_norm_error)
-        self.max_norm_error_shortest_path.append(max_norm_error_shortest_path)  # noqa: E501
-        self.optimal_paths.append(optimal_paths)
 
     def best_path(self, state: Any = None) -> list:
         """Devuelve el mejor camino desde un estado inicial hasta el estado terminal
@@ -420,14 +428,15 @@ class QAgentSSPSarsa0(QAgentSSP):
         """
         Actualiza el valor de Q(s,a) en la tabla Q usando la política de SARSA(0)
         """
-        alpha = self.get_alpha(state, action)
+        alpha = self.eval_alpha(state, action)
         gamma = self.gamma
         q_old = self.q_table[state][action]
         next_action = self.select_action(next_state)
         next_q = self.q_table[next_state][next_action]
         q_new = q_old * (1 - alpha) + alpha * (reward + gamma * next_q)
         self.q_table[state][action] = q_new
-    
+
+
 class QAgentSSPExpectedSarsa0(QAgentSSPSarsa0):
     """
         Agente que resuelve el Stochastic Shortest Path Problem (SSP) mediante Expected SARSA(0).
@@ -437,13 +446,14 @@ class QAgentSSPExpectedSarsa0(QAgentSSPSarsa0):
         """
         Actualiza el valor de Q(s,a) en la tabla Q usando la política de SARSA(0)
         """
-        alpha = self.get_alpha(state, action)
+        alpha = self.eval_alpha(state, action)
         gamma = self.gamma
         q_old = self.q_table[state][action]
         expected_next_q = self.expected_q_value(next_state)
-        q_new = q_old * (1 - alpha) + alpha * (reward + gamma * expected_next_q)
+        q_new = q_old * (1 - alpha) + alpha * \
+            (reward + gamma * expected_next_q)
         self.q_table[state][action] = q_new
-        
+
     def expected_q_value(self, state):
         """
         Calcula el valor esperado de Q(s,a) para un estado s
@@ -457,17 +467,17 @@ class QAgentSSPExpectedSarsa0(QAgentSSPSarsa0):
         return expected_q
 
 
-
 if __name__ == "__main__":
     from RLib.environments.ssp import SSPEnv
     from RLib.graphs.perceptron import create_perceptron_graph, plot_network_graph
     from RLib.utils.dijkstra import get_shortest_path_from_policy, get_optimal_policy_and_q_star
-
+    from RLib.action_selectors import EpsilonGreedyDecayActionSelector
     # Crear el grafo y el entorno
-    graph = create_perceptron_graph([1, 20, 1], 100, 2000)
+    graph = create_perceptron_graph([1, 10, 1], 20, 2000, 20)
+
     start_node = ('Entrada', 0)
     end_node = ('Salida', 0)
-    speed_distribution = "lognormal"
+    speed_distribution = "uniform"
 
     environment = SSPEnv(graph, start_node, end_node,
                          costs_distribution=speed_distribution)
@@ -476,18 +486,22 @@ if __name__ == "__main__":
     optimal_policy, optimal_q_table = get_optimal_policy_and_q_star(graph, end_node, speed_distribution)  # noqa: E501
 
     # Obtener lista de nodos del camino más corto
-    shortest_path = get_shortest_path_from_policy(optimal_policy, start_node, end_node) # noqa: E501
-    
-    # Crear el selector de acciones y el agente Q-Learning
-    eps_selector = EpsilonGreedyActionSelector(epsilon=0.1)
-    
-    q_agent = QAgentSSP(environment=environment, alpha='1 / N(s,a)', action_selector=eps_selector) # noqa: E501
-    sarsa_agent = QAgentSSPSarsa0(environment=environment, alpha='1 / N(s,a)', action_selector=eps_selector) # noqa: E501
-    expected_sarsa_agent = QAgentSSPExpectedSarsa0(environment=environment, alpha='1 / N(s,a)', action_selector=eps_selector) # noqa: E501
-    
-    # sarsa_agent.train(num_episodes=10000, shortest_path=shortest_path, q_star=optimal_q_table)
+    shortest_path = get_shortest_path_from_policy(optimal_policy, start_node, end_node)  # noqa: E501
 
-    # Entrenar al agente
-    # agent.train(num_episodes=10000, distribution='lognormal',
-    # shortest_path=shortest_path, q_star=optimal_q_table)
+    # Crear el selector de acciones y el agente Q-Learning
+    eps_selector = EpsilonGreedyActionSelector(epsilon=1)
+    alpha_expr = '1000 / (1000 + N(s,a))'
+    q_agent = QAgentSSP(environment=environment, alpha=alpha_expr, action_selector=eps_selector)  # noqa: E501
+    # Entrenar al agente Q-Learning
+    q_agent.train(num_episodes=20000, shortest_path=shortest_path, q_star=optimal_q_table)  # noqa: E501
+
+    eps_decay_selector = EpsilonGreedyDecayActionSelector(constant=10)
+    sarsa_agent = QAgentSSPSarsa0(environment=environment, alpha=alpha_expr, action_selector=eps_decay_selector)  # noqa: E501
+    sarsa_agent.train(num_episodes=30000,
+                      shortest_path=shortest_path, q_star=optimal_q_table)
+    # Entrenar agentes SARSA(0) y Expected SARSA(0)
+    expected_sarsa_agent = QAgentSSPExpectedSarsa0(environment=environment, alpha=alpha_expr, action_selector=eps_decay_selector)  # noqa: E501
+    expected_sarsa_agent.train(
+        num_episodes=30000, shortest_path=shortest_path, q_star=optimal_q_table)
+
     # print(agent.best_path())
