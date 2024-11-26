@@ -132,18 +132,17 @@ class SSPEnv:
         """
 
         assert graph is not None, "El graph no puede ser None"
+        assert start_state is not None, "El estado inicial no puede ser None"
+        assert terminal_state is not None, "El estado terminal no puede ser None"
         self.graph = copy.deepcopy(graph)
         # Añadir un arco recurrente de largo 0 en el nodo terminal
         if not self.graph.has_edge(terminal_state, terminal_state):
             self.graph.add_edge(terminal_state, terminal_state, length=0)
         else:
             self.graph[terminal_state][terminal_state][0]["length"] = 0
-        self.num_nodos = graph.number_of_nodes()
-        assert start_state is not None, "El estado inicial no puede ser None"
         self.start_state = start_state
-        self.current_state = self.start_state
-        assert terminal_state is not None, "El estado terminal no puede ser None"
         self.terminal_state = terminal_state
+        self.current_state = self.start_state
         self.num_states = graph.number_of_nodes()
         self.num_actions = {
             k: v
