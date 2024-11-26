@@ -1,33 +1,42 @@
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))  # noqa: E402
+from typing import List
 import plotly.graph_objects as go
 import networkx as nx
 import random
 from RLib.utils.dijkstra import dijkstra_shortest_path
 
-def create_perceptron_graph(nodes_by_layer=[1, 1],
+import numpy as np
+np.ar
+
+
+def create_perceptron_graph(nodes_by_layer: List[int] = [1, 1],
                             min_length=1,
                             max_length=20,
-                            seed=None) -> nx.DiGraph:
-    """ 
-    Crea un grafo dirigido que representa un perceptrón multicapa.
+                            seed=20) -> nx.DiGraph:
+    """Crea un grafo dirigido que representa un perceptrón multicapa.
 
-    Parámetros
+    Parameters
     ----------
-    nodes_by_layer : list of int
+    nodes_by_layer : List[int], opcional
         Número de nodos en cada capa del perceptrón. El i-ésimo elemento de la lista indica el número de nodos en la i-ésima capa.
-    min_length : int
+    min_length : int, opcional
         Longitud mínima de los arcos que conectan los nodos.
-    max_length : int
+    max_length : int, opcional
         Longitud máxima de los arcos que conectan los nodos.
-    seed : int, optional
+    seed : int, opcional
         Semilla para el generador de números aleatorios para garantizar reproducibilidad.
 
-    Retorna
+    Returns
     -------
     perceptron_graph : nx.DiGraph
         Grafo dirigido que representa el perceptrón multicapa.
+
+    Raises
+    ------
+    TypeError
+        Si los parámetros layers y nodes_by_layer no son listas.
     """
     if type(nodes_by_layer) != list:
         raise TypeError(
@@ -72,7 +81,35 @@ def create_perceptron_graph(nodes_by_layer=[1, 1],
 
     return perceptron_graph
 
-def create_hard_perceptron_graph(nodes_by_layer=[1, 1], min_length=1, max_length=20, seed=None, costs_distribution=None) -> nx.DiGraph:
+
+def create_hard_perceptron_graph(nodes_by_layer: List[int] = [1, 1], min_length: int = 1, max_length: int = 20, costs_distribution: str = None, seed: int = 20) -> nx.DiGraph:
+    """
+    Crea un grafo dirigido que representa un perceptrón multicapa donde se eliminan los arcos que comienzan en un nodo que no está en el camino más corto y terminan en un nodo que sí está en el camino más corto.
+
+    Parameters
+    ----------
+    nodes_by_layer : List[int], opcional
+        Número de nodos en cada capa del perceptrón. El i-ésimo elemento de la lista indica el número de nodos en la i-ésima capa.
+    min_length : int, opcional
+        Longitud mínima de los arcos que conectan los nodos.
+    max_length : int, opcional
+        Longitud máxima de los arcos que conectan los nodos.
+    costs_distribution : str, opcional
+        Distribución de los costos de los arcos. Puede ser 'uniform' o 'normal'.
+    seed : int, opcional
+        Semilla para el generador de números aleatorios para garantizar reproducibilidad.
+
+    Returns
+    -------
+    perceptron_graph : nx.DiGraph
+        Grafo dirigido que representa el perceptrón multicapa.
+    
+    Raises
+    ------
+    TypeError
+        Si los parámetros layers y nodes_by_layer no son listas.
+    """
+
     def remove_edges_to_shortest_path(graph, shortest_path):
         """Remover los arcos que comienzan en un nodo que no está en el camino más corto y terminan en un nodo que sí está en el camino más corto
         """
@@ -87,24 +124,34 @@ def create_hard_perceptron_graph(nodes_by_layer=[1, 1], min_length=1, max_length
                     break
         # Remover los arcos
         graph.remove_edges_from(edges_to_remove)
-        
-    graph = create_perceptron_graph(nodes_by_layer, min_length, max_length, seed)
+
+    graph = create_perceptron_graph(
+        nodes_by_layer, min_length, max_length, seed)
     origin_node = ('Entrada', 0)
     target_node = ('Salida', 0)
-    _, _, shortest_path = dijkstra_shortest_path(graph, origin_node, target_node, distribution=costs_distribution)
+    _, _, shortest_path = dijkstra_shortest_path(
+        graph, origin_node, target_node, distribution=costs_distribution)
     remove_edges_to_shortest_path(graph, shortest_path)
     return graph
+
 
 def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
     """
     Función para visualizar cualquier grafo dirigido con nodos y arcos, donde los arcos tienen una longitud `length`.
 
-    Parámetros
+    Parameters
     ----------
     graph : nx.DiGraph
         Grafo dirigido que representa el perceptrón multicapa.
-    use_annotations : bool
+    use_annotations : bool, opcional
         Indica si se deben mostrar las etiquetas de los arcos.
+    label_pos : float, opcional
+        Posición de las etiquetas en los arcos.
+    
+    Returns
+    -------
+    None
+        La función muestra la figura en el navegador.
     """
 
     # Crear un objeto figura
@@ -137,7 +184,7 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
         # Añadir longitud del arco al texto del arco
         # Obtener la longitud del arco
         length = graph.edges[edge].get('length', 0)
-        
+
         if use_annotations:
             # Calcular el primer trozo (15%) del segmento para la anotación
             annot_x = x0 + (x1 - x0) * label_pos
@@ -254,5 +301,7 @@ if __name__ == "__main__":
     # Crear un perceptrón con 3 capas y 2 nodos en cada capa
     perceptron_graph = create_perceptron_graph(nodes_by_layer=[1, 2, 10, 2, 1])
     plot_network_graph(perceptron_graph, use_annotations=True, label_pos=0.6)
-    hard_perceptron_graph = create_hard_perceptron_graph(nodes_by_layer=[1, 2, 3, 2, 1], costs_distribution='uniform')
-    plot_network_graph(hard_perceptron_graph, use_annotations=True, label_pos=0.6)
+    hard_perceptron_graph = create_hard_perceptron_graph(
+        nodes_by_layer=[1, 2, 3, 2, 1], costs_distribution='uniform')
+    plot_network_graph(hard_perceptron_graph,
+                       use_annotations=True, label_pos=0.6)
