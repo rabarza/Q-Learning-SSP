@@ -12,6 +12,22 @@ sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../..')))
 
 # ================= Comparación de modelos =================
+criteria_mapping = {
+    "steps": ("steps", "steps_best"),
+    "score": ("scores", "scores_best"),
+    "reward": ("scores", "scores_best"),
+    "average reward": ("avg_scores", "avg_scores_best"),
+    "avg score": ("avg_scores", "avg_scores_best"),
+    "error": ("max_norm_error", None),
+    "shortest path error": ("max_norm_error_shortest_path", None),
+    "regret": ("regret", None),
+    "average regret": ("average_regret", None),
+    "optimal paths": ("optimal_paths", None),
+    "max_norm_error_normalized": ("max_norm_error_normalized", None),
+    "max_norm_error_shortest_path_normalized": ("max_norm_error_shortest_path_normalized", None),
+    "normalized error": ("max_norm_error_normalized", None),
+    "normalized shortest path error": ("max_norm_error_shortest_path_normalized", None),
+}
 
 # ======================= Get label =======================
 
@@ -35,10 +51,8 @@ def get_label(agent):
     label["strategy"] = agent.strategy
 
     # Adding the label by the alpha of the agent
-    if agent.dynamic_alpha:  # If learning rate depends on time
-        label["alpha"] = f"α = {agent.alpha_formula}"
-    else:
-        label["alpha"] = f"α = {agent.alpha}"
+    label["alpha"] = f"α = {agent.alpha}"
+
     # If the agent has action selector
     if hasattr(agent, "action_selector") and agent.action_selector is not None:
         return (
@@ -173,13 +187,13 @@ def ajustar_intensidad_color(color, intensity_factor):
 
 
 def plot_results_per_episode_comp_plotly(
-        agents_list: List[QAgentSSP], criteria: str = "error", add_label: bool = True):
+    agents_list: List[QAgentSSP], criteria: str = "error", add_label: bool = True
+):
     """
     Genera un gráfico de comparación de resultados por episodio utilizando Plotly y crea un DataFrame
     de los resultados de cada agente.
 
     Parameters
-    ----------
     agents_list : list
         agents_list de agentes QLearningAgent.
     criteria : str
@@ -193,28 +207,11 @@ def plot_results_per_episode_comp_plotly(
     -------
     fig : plotly.graph_objects.Figure
         Gráfico de comparación de resultados por episodio.
-    agent_dataframes : dict
-        Un diccionario que contiene un DataFrame para cada agente.
     """
-
     fig = go.Figure()
 
-    criteria_mapping = {
-        "steps": ("steps", "steps_best"),
-        "score": ("scores", "scores_best"),
-        "reward": ("scores", "scores_best"),
-        "average reward": ("avg_scores", "avg_scores_best"),
-        "avg score": ("avg_scores", "avg_scores_best"),
-        "error": ("max_norm_error", None),
-        "shortest path error": ("max_norm_error_shortest_path", None),
-        "regret": ("regret", None),
-        "average regret": ("average_regret", None),
-        "optimal paths": ("optimal_paths", None),
-        "max_norm_error_normalized": ("max_norm_error_normalized", None),
-        "max_norm_error_shortest_path_normalized": ("max_norm_error_shortest_path_normalized", None),
-        "normalized error": ("max_norm_error_normalized", None),
-        "normalized shortest path error": ("max_norm_error_shortest_path_normalized", None),
-    }
+    # Obtener lista de valores únicos de alpha
+    unique_alphas = sorted(set(agent.alpha for agent in agents_list))
 
     if criteria not in criteria_mapping:
         raise ValueError(f"Invalid comparison criteria: {criteria}")
@@ -263,17 +260,65 @@ def plot_results_per_episode_comp_plotly(
                     name=label,
                     line=dict(color=color_actual),
                     hovertext=label,
+                    visible=True,
                 )
             )
 
+    # Remueve los botones ya que utilizaremos la leyenda para filtrar
+        # Crear botones para filtrar por alpha
+    buttons = []
+    for alpha in unique_alphas:
+        visible = [agent.alpha == alpha for agent in agents_list]
+        buttons.append(
+            dict(
+                method='update',
+                label=f'α: {alpha}',
+                args=[{'visible': visible},
+                      {'title': f'{criteria} - α: {alpha}'}],
+            )
+        )
+
+    # Agregar botón para mostrar todos
+    buttons.insert(
+        0,
+        dict(
+            label='Mostrar todos',
+            method='update',
+            args=[{'visible': [True] * len(fig.data)},
+                  {'title': f'{criteria} - Todos los α'}],
+        )
+    )
+
     fig.update_layout(
+        updatemenus=[
+            dict(
+                type="dropdown",  # Cambia a 'dropdown' para mostrar la lista de opciones
+                direction='down',
+                buttons=buttons,
+                active=0,
+                x=0,
+                xanchor='left',
+                y=1,
+                yanchor='top',
+            )
+        ],
         xaxis_title="Episodios",
         yaxis_title=criteria_name,
-        title=dict(text="Comparación de Resultados por Episodio"),
+        title="Comparación de Resultados por Episodio",
+        showlegend=True,
+        legend_title="Agentes",
+        legend=dict(
+            orientation="v",
+            x=1.02,
+            xanchor="left",
+            y=1,
+            yanchor="top",
+        ),
         extendiciclecolors=True,
         hoverlabel=dict(
             font_size=16,
-        )
+        ),
+
     )
 
     return fig
