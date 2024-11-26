@@ -2,24 +2,12 @@ import numpy as np
 from math import log, sqrt
 
 
-def auto_super_init(func):
-    def wrapper(self, *args, **kwargs):
-        args_locals = func(self, *args, **kwargs) or {}
-        # print(f"Variables locales antes de eliminar 'self' y '__class__': {args_locals}")
-        args_locals.pop("self", None)
-        args_locals.pop("__class__", None)
-        # print(f"Variables locales después de la limpieza: {args_locals}")
-        super(self.__class__, self).__init__(**args_locals)
-
-    return wrapper
-
-
 class ActionSelector(object):
     """Abstract class for action selection strategies"""
 
     def __init__(self, **kwargs):
-        self.params = kwargsgit
-        self.strategy = ""
+        self.params = kwargs
+        self.strategy = kwargs.get("strategy", "default")
 
     def select_action(self, agent, state):
         raise NotImplementedError()
@@ -38,12 +26,10 @@ class ActionSelector(object):
 
 
 class EpsilonGreedyActionSelector(ActionSelector):
-    @auto_super_init
     def __init__(self, epsilon=0.1):
         """epsilon: probabilidad de seleccionar una acción aleatoria en lugar de la mejor acción según Q(s,a)"""
+        super().__init__(epsilon=0.1, strategy="e-greedy")
         self.epsilon = epsilon  # equivalent to kwargs.pop('epsilon', 0.1)
-        self.strategy = "e-greedy"
-        return locals()  # Dictionary with the local variables
 
     def select_action(self, agent, state):
         greedy_action = agent.argmax_q_table(state)
@@ -57,12 +43,10 @@ class EpsilonGreedyActionSelector(ActionSelector):
 
 
 class EpsilonGreedyDecayActionSelector(ActionSelector):
-    @auto_super_init
     def __init__(self, constant=0.99):
+        super().__init__(constant=constant, strategy="e-decay")
         """epsilon(t) = constant / (n(s) + 1), donde n(s) es el número de visitas al estado s. La constante es un valor entre 0 y 1."""
         self.constant = constant
-        self.strategy = "e-decay-RM"
-        return locals()  # Dictionary with the local variables
 
     def select_action(self, agent, state):
         t = agent.visits_states[state]
@@ -79,7 +63,8 @@ class EpsilonGreedyDecayActionSelector(ActionSelector):
         epsilon = self.constant / (t + self.constant)
         actions = agent.action_set(state)
         greedy_action = agent.argmax_q_table(state)
-        probabilities = dict(zip(actions, [epsilon/len(actions) if action != greedy_action else 1 - epsilon + epsilon/len(actions) for action in actions]))
+        probabilities = dict(zip(actions, [epsilon/len(actions) if action !=
+                             greedy_action else 1 - epsilon + epsilon/len(actions) for action in actions]))
         return probabilities
 
     def get_label(self):
@@ -91,7 +76,6 @@ class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
     Extracted from: Bubeck 2012, "Regret Analysis of Stochastic and Nonstochastic Multi-armed Bandit Problems" 2.4.5
     """
 
-    @auto_super_init
     def __init__(self, c, d):
         """
         Similar to epsilon-greedy, but the probability of exploration decreases over time. The probability of exploration is given by:
@@ -102,10 +86,9 @@ class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
             c: exploration parameter, greater than 0
             d: exploration parameter, between 0 and 1
         """
+        super().__init__(c=c, d=d, strategy="e-decay-Bubeck")
         self.c = c
         self.d = d
-        self.strategy = "e-decay-Bubeck"
-        return locals()
 
     def select_action(self, agent, state):
         t = agent.visits_states[state]
@@ -123,14 +106,13 @@ class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
 
 
 class UCB1ActionSelector(ActionSelector):
-    @auto_super_init
     def __init__(self, c=2):
         """Parámetros
         c: parámetro de exploración
         """
+        super().__init__(c=2, strategy="UCB1")
         self.c = c
         self.strategy = f"UCB1"
-        return locals()
 
     def select_action(self, agent, state):
         c = self.c
@@ -169,14 +151,13 @@ class UCB1ActionSelector(ActionSelector):
 
 class AsOptUCBActionSelector(ActionSelector):
     """Asymptotically Optimal UCB action selector"""
-    @auto_super_init
+
     def __init__(self, c=2):
         """Parámetros
         c: parámetro de exploración
         """
+        super().__init__(c=2, strategy="AsOpt-UCB")
         self.c = c
-        self.strategy = f"AsOpt-UCB"
-        return locals()
 
     def select_action(self, agent, state):
         c = self.c
@@ -219,7 +200,6 @@ class AsOptUCBActionSelector(ActionSelector):
 class Exp3ActionSelector(ActionSelector):
     """Exp3 action selector"""
 
-    @auto_super_init
     def __init__(self, eta):
         """
         Exp3 action selector tiene un parámetro eta que puede ser constante o dinámico. En el caso de ser constante se debe ingresar un valor de eta, en el caso de ser dinámico se debe ingresar una fórmula para calcular eta en función del tiempo y el número de episodios.
@@ -235,10 +215,8 @@ class Exp3ActionSelector(ActionSelector):
         Parámetros:
             eta: parámetro de exploración
         """
-
+        super().__init__(eta=eta, strategy="exp3")
         self.eta = str(eta)
-        self.strategy = "exp3"
-        return locals()
 
     def calculate_probabilities(self, q_values, eta):
         # Los valores de q se normalizan para evitar problemas de overflow (restando el máximo valor de q)
@@ -248,7 +226,7 @@ class Exp3ActionSelector(ActionSelector):
         probabilities = exp_values / np.sum(exp_values)
         self.probabilities = probabilities
         return probabilities
-    
+
     def get_probabilities(self, agent, state):
         """Return the probabilities of selecting each action in the state. Used for debugging purposes"""
         return dict(zip(agent.action_set(state), self.probabilities))
