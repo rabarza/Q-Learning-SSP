@@ -20,9 +20,10 @@ class QAgent:
     """
 
     def __init__(self,
+                 action_selector: ActionSelector = EpsilonGreedyActionSelector(
+                     0.1),
                  alpha: Union[str, float] = 0.1,
-                 gamma: float = 1,
-                 action_selector: ActionSelector = EpsilonGreedyActionSelector(0.1)):
+                 gamma: float = 1):
         """
         Parameters
         ----------
@@ -36,11 +37,11 @@ class QAgent:
         action_selector: ActionSelector (objeto de la clase ActionSelector)
             selector de acciones.
         """
-        self.env = None
         self.alpha = alpha
         self.gamma = gamma
         self.action_selector = action_selector
         self.strategy = self.action_selector.strategy
+        self.env = None
         self.q_table = dict()
         self.visits_actions = dict()
         self.visits_states = dict()
@@ -156,18 +157,23 @@ class QAgent:
         """
         self.visits_actions[state][action] += 1
 
-    def select_action(self, state):
+    def select_action(self, state: Any, increase_visits: bool = True) -> Any:
         """
         Seleccionar la siguiente acción a tomar
+
         Parámetros:
+        -----------
             state (int): Estado actual
+            increase_visits (bool): Indica si se debe incrementar la cantidad de veces que se toma la acción
+
         Retorna:
+        --------
             action (int): Acción a tomar
         """
         # Seleccionar la siguiente acción a tomar
         action = self.action_selector.select_action(self, state)
-        # Incrementar el contador de visitas para la acción en el estado actual
-        self.increment_times_state_action(state, action)
+        # Incrementar la cantidad de veces que se toma la acción
+        increase_visits and self.increment_times_state_action(state, action)
         # Devolver acción
         return action
 
@@ -198,12 +204,12 @@ class QAgent:
 
     def update_q_table(self, state: Any, action: Any, reward: float, next_state: Any) -> None:
         """
-        Actualiza el valor de Q(s,a) en la tabla Q
+        Actualiza el valor de Q(s,a) en la tabla Q usando Q-Learning
         """
         alpha = self.eval_alpha(state, action)
         gamma = self.gamma
         q_old = self.q_table[state][action]
-        q_new = q_old * (1 - alpha) + alpha * (
+        q_new = q_old * (1-alpha) + alpha * (
             reward + gamma * self.max_q_table(next_state)
         )
         self.q_table[state][action] = q_new
@@ -217,6 +223,27 @@ class QAgent:
         self.storage_path = save_path
         save_model_results(self, save_path)
 
+    def results(self):
+        # Devuelve los resultados como diccionario
+        optimal_cost = max_q_table(self.q_star, self.env.start_state)
+        results = {
+            "strategy": self.strategy,
+            "parameters": self.action_selector.get_label() if self.action_selector else self.get_label(),
+            "steps": self.steps,
+            "scores": self.scores,
+            "avg_scores": self.avg_scores,
+            "regret": self.regret,
+            "average_regret": self.average_regret,
+            "max_norm_error": self.max_norm_error,
+            "max_norm_error_shortest_path": self.max_norm_error_shortest_path,
+            "max_norm_error_normalized": np.array(self.max_norm_error) / abs(optimal_cost),
+            "max_norm_error_shortest_path_normalized": np.array(self.max_norm_error_shortest_path) / abs(optimal_cost),  # noqa: E501
+            "optimal_cost": optimal_cost,
+            "optimal_paths": self.optimal_paths,
+            "alpha": self.alpha,
+        }
+        return results
+
 
 class QAgentSSP(QAgent):
     """
@@ -226,9 +253,9 @@ class QAgentSSP(QAgent):
     def __init__(
         self,
         environment: SSPEnv,
+        action_selector: ActionSelector = EpsilonGreedyActionSelector(0.1),
         alpha: Union[str, float] = 0.1,
         gamma: float = 1,
-        action_selector: ActionSelector = EpsilonGreedyActionSelector(0.1),
     ):
         """
         Parameters
@@ -426,14 +453,14 @@ class QAgentSSPSarsa0(QAgentSSP):
 
     def update_q_table(self, state, action, reward, next_state):
         """
-        Actualiza el valor de Q(s,a) en la tabla Q usando la política de SARSA(0)
+        Actualiza el valor de Q(s,a) en la tabla Q usando SARSA(0)
         """
         alpha = self.eval_alpha(state, action)
         gamma = self.gamma
+        next_action = self.select_action(next_state, increase_visits=False)
         q_old = self.q_table[state][action]
-        next_action = self.select_action(next_state)
         next_q = self.q_table[next_state][next_action]
-        q_new = q_old * (1 - alpha) + alpha * (reward + gamma * next_q)
+        q_new = q_old * (1-alpha) + alpha * (reward + gamma * next_q)
         self.q_table[state][action] = q_new
 
 
@@ -444,14 +471,13 @@ class QAgentSSPExpectedSarsa0(QAgentSSPSarsa0):
 
     def update_q_table(self, state, action, reward, next_state):
         """
-        Actualiza el valor de Q(s,a) en la tabla Q usando la política de SARSA(0)
+        Actualiza el valor de Q(s,a) en la tabla Q usando Expected-SARSA(0)
         """
         alpha = self.eval_alpha(state, action)
         gamma = self.gamma
         q_old = self.q_table[state][action]
         expected_next_q = self.expected_q_value(next_state)
-        q_new = q_old * (1 - alpha) + alpha * \
-            (reward + gamma * expected_next_q)
+        q_new = q_old * (1-alpha) + alpha * (reward + gamma * expected_next_q)
         self.q_table[state][action] = q_new
 
     def expected_q_value(self, state):
