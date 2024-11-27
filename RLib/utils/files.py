@@ -1,6 +1,7 @@
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))  # noqa: E402
+from typing import Optional
 import pickle
 import osmnx as ox
 import json
@@ -13,7 +14,7 @@ from RLib.utils.serializers import serialize_table
 # ======================= Save and Load =======================
 
 
-def save_model_results(agent: QAgentSSP, results_path: str = None):
+def save_model_results(agent: QAgentSSP, results_path: str = None) -> None:
     """
     Guarda el agent en un archivo usando pickle, actualiza el storage_path del agent. Si la carpeta results_path no existe, la crea y guarda el archivo en ella.
     Además, guarda la tabla
@@ -73,7 +74,7 @@ def save_model_results(agent: QAgentSSP, results_path: str = None):
         json.dump(serialized_visits, archivo, indent=4)
 
 
-def load_model_results(nombre_archivo, ruta_carpeta="results"):
+def load_model_results(nombre_archivo, ruta_carpeta="results") -> Optional[QAgentSSP]:
     """
     Carga el objeto desde un archivo usando pickle.
 
@@ -81,6 +82,16 @@ def load_model_results(nombre_archivo, ruta_carpeta="results"):
     ----------
     nombre_archivo: str
         nombre del archivo a cargar
+
+    Returns
+    -------
+    object
+        objeto cargado desde el archivo
+
+    Raises
+    ------
+    EOFError
+        si el archivo está vacío o no contiene datos válidos
     """
     # Combinar el nombre del archivo con la ruta de la carpeta "results"
     ruta_archivo = os.path.join(ruta_carpeta, nombre_archivo)
@@ -91,9 +102,8 @@ def load_model_results(nombre_archivo, ruta_carpeta="results"):
             objeto_cargado = pickle.load(archivo)
         return objeto_cargado
     except EOFError:
-        print(
-            f"Error: El archivo {ruta_archivo} está vacío o no contiene datos válidos.")
-        return None
+        message = f"Error: El archivo {ruta_archivo} está vacío o no contiene datos válidos."
+        print(message)
 
 
 def find_files_by_keyword(keyword, ruta_carpeta):
@@ -122,17 +132,31 @@ def find_files_by_keyword(keyword, ruta_carpeta):
 
 # ======================= Download graph =======================
 def download_graph(
-    north=-33.4283,
-    south=-33.6298,
-    east=-70.9051,
-    west=-70.5099,
-    filepath="data/santiago-penaflor",
-    format="graphml",
+    north: float = -33.4283,
+    south: float = -33.6298,
+    east: float = -70.9051,
+    west: float = -70.5099,
+    filepath: str = "data/santiago-penaflor",
+    format: str = "graphml",
 ):
-    """
-    Descarga los datos de OpenStreetMap y crea un grafo de la ciudad de Santiago de Chile.
+    """Descarga los datos de OpenStreetMap y crea un grafo de la ciudad de Santiago de Chile.
     Si el archivo "santiago-penaflor.graphml" existe, carga el grafo desde el archivo.
     Si el archivo no existe, descarga los datos y crea el grafo, y luego lo guarda en el archivo.
+
+    Parameters
+    ----------
+    north: float
+        latitud norte
+    south: float
+        latitud sur
+    east: float
+        longitud este
+    west: float
+        longitud oeste
+    filepath: str
+        ruta del archivo para guardar el grafo
+    format: str
+        formato del archivo (por defecto es "graphml")
     """
     filepath = f"{filepath}.{format}"
     # Verificar si el archivo existe
@@ -155,7 +179,7 @@ def download_graph(
     return G
 
 
-def serialize_and_save_table(table, path, file_name):
+def serialize_and_save_table(table, path, file_name) -> Optional[None]:
     """	Serializa la tabla y la guarda en un archivo JSON en la ruta especificada.
     Parameters
     ----------
@@ -165,6 +189,9 @@ def serialize_and_save_table(table, path, file_name):
         ruta de la carpeta donde se guardará el archivo
     file_name: str
         nombre del archivo
+    Returns
+    -------
+    None
     """
 
     if not os.path.exists(path):

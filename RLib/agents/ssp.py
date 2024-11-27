@@ -517,17 +517,16 @@ if __name__ == "__main__":
     # Crear el selector de acciones y el agente Q-Learning
     eps_selector = EpsilonGreedyActionSelector(epsilon=1)
     alpha_expr = '1000 / (1000 + N(s,a))'
+    # Entrenar agente Q-Learning
     q_agent = QAgentSSP(environment=environment, alpha=alpha_expr, action_selector=eps_selector)  # noqa: E501
-    # Entrenar al agente Q-Learning
     q_agent.train(num_episodes=20000, shortest_path=shortest_path, q_star=optimal_q_table)  # noqa: E501
 
-    eps_decay_selector = EpsilonGreedyDecayActionSelector(constant=10)
+    # Entrenar agente SARSA(0)
+    eps_decay_selector = EpsilonGreedyDecayActionSelector(constant=1)
     sarsa_agent = QAgentSSPSarsa0(environment=environment, alpha=alpha_expr, action_selector=eps_decay_selector)  # noqa: E501
-    sarsa_agent.train(num_episodes=30000,
-                      shortest_path=shortest_path, q_star=optimal_q_table)
-    # Entrenar agentes SARSA(0) y Expected SARSA(0)
+    sarsa_agent.train(num_episodes=30000, shortest_path=shortest_path, q_star=optimal_q_table)  # noqa: E501
+    # Entrenar agente Expected SARSA(0)
     expected_sarsa_agent = QAgentSSPExpectedSarsa0(environment=environment, alpha=alpha_expr, action_selector=eps_decay_selector)  # noqa: E501
-    expected_sarsa_agent.train(
-        num_episodes=30000, shortest_path=shortest_path, q_star=optimal_q_table)
+    expected_sarsa_agent.train(num_episodes=30000, shortest_path=shortest_path, q_star=optimal_q_table)  # noqa: E501
 
     # print(agent.best_path())

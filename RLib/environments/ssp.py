@@ -124,11 +124,14 @@ class SSPEnv:
     def __init__(self, graph: nx.Graph, start_state: Any, terminal_state: Any, costs_distribution: str = "lognormal", shortest_path: list = None):
         """Constructor de la clase SSPEnv. Inicializa el entorno de aprendizaje con el grafo, el estado inicial y el estado terminal. Notar que al nodo terminal se le agrega un arco recurrente con longitud 0.
 
-        Parámetros:
+        Parameters
         ----------
-        graph (nx.Graph): Grafo con el que se va a trabajar. 
-        start_state (int): Estado inicial
-        terminal_state (int): Estado terminal
+        graph: nx.Graph
+            Grafo con el que se va a trabajar
+        start_state: Any
+            Estado inicial
+        terminal_state: Any
+            Estado terminal
         """
 
         assert graph is not None, "El graph no puede ser None"

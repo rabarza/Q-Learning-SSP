@@ -1,11 +1,11 @@
 import numpy as np
+from typing import Any, Optional
 from math import log, sqrt
 
 
 class ActionSelector(object):
-    """Abstract class for action selection strategies"""
-
     def __init__(self, **kwargs):
+        """Clase base para los selectores de acción. Los selectores de acción son responsables de seleccionar la acción que el agente debe realizar en un estado dado."""
         self.params = kwargs
         self.strategy = kwargs.get("strategy", "default")
 
@@ -27,8 +27,25 @@ class ActionSelector(object):
 
 class EpsilonGreedyActionSelector(ActionSelector):
     def __init__(self, epsilon=0.1):
-        """epsilon: probabilidad de seleccionar una acción aleatoria en lugar de la mejor acción según Q(s,a)"""
+        """ Selector de acción ε-greedy. La probabilidad de exploración es ε y la probabilidad de explotación es 1-ε.
+
+        Parameters
+        ------------
+        epsilon: float
+            Probabilidad de exploración, valor entre 0 y 1.
+
+        Raises
+        ------
+        ValueError
+            Si el valor de epsilon no está en el rango [0 - 1]
+
+        Examples
+        --------
+        >>> selector = EpsilonGreedyActionSelector(epsilon=0.1)
+        """
         super().__init__(epsilon=0.1, strategy="e-greedy")
+        if epsilon < 0 or epsilon > 1:
+            raise ValueError("Epsilon debe ser un valor entre 0 y 1")
         self.epsilon = epsilon  # equivalent to kwargs.pop('epsilon', 0.1)
 
     def select_action(self, agent, state):
@@ -44,8 +61,22 @@ class EpsilonGreedyActionSelector(ActionSelector):
 
 class EpsilonGreedyDecayActionSelector(ActionSelector):
     def __init__(self, constant=0.99):
+        r"""Clase para un selector de acción ε-greedy con exploración decreciente. 
+        La probabilidad de exploración disminuye a medida que se visitan los estados. 
+        La probabilidad de exploración para un estado s está dada por:
+        ϵₜ(s) = c / Nₜ(s), donde Nₜ(s) es el número de visitas al estado s en el tiempo t. 
+        La constante `c=constant` es un valor entre 0 y 1.
+
+        Parameters
+        ------------
+        constant: float
+            Valor entre 0 y 1 de la constante de la tasa de decrecimiento de `ϵₜ`  
+
+        Examples
+        --------
+        >>> selector = EpsilonGreedyDecayActionSelector(constant=1)   
+        """
         super().__init__(constant=constant, strategy="e-decay")
-        """epsilon(t) = constant / (n(s) + 1), donde n(s) es el número de visitas al estado s. La constante es un valor entre 0 y 1."""
         self.constant = constant
 
     def select_action(self, agent, state):
@@ -73,32 +104,36 @@ class EpsilonGreedyDecayActionSelector(ActionSelector):
 
 class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
     """
-    Extracted from: Bubeck 2012, "Regret Analysis of Stochastic and Nonstochastic Multi-armed Bandit Problems" 2.4.5
+    Extraído de: Bubeck 2012, "Regret Analysis of Stochastic and Nonstochastic Multi-armed Bandit Problems" 2.4.5
     """
 
-    def __init__(self, c, d):
+    def __init__(self, c: float = 1, d: float = 0.9):
         """
-        Similar to epsilon-greedy, but the probability of exploration decreases over time. The probability of exploration is given by:
-            epsilon(t) = min (1, c * K / (d ** 2 * t))
-        where t is the time step, c and d are constants.
+        Similar a epsilon-greedy, pero la probabilidad de exploración disminuye con el tiempo. La probabilidad de exploración está dada por:
+            ϵₜ = min{ 1, c A(s) / d² N(s) }
+        donde N(s) es la cantidad de visitas al estado s, c y d son constantes de exploración y A(s) es el número de acciones posibles desde el estado.
 
-        Parameters:
-            c: exploration parameter, greater than 0
-            d: exploration parameter, between 0 and 1
+        Parameters
+        ------------
+            c : float  
+                parametro de exploración, entre 0 y 1
+
+            d: parametro de exploración, entre 0 y 1
         """
         super().__init__(c=c, d=d, strategy="e-decay-Bubeck")
         self.c = c
         self.d = d
 
     def select_action(self, agent, state):
-        t = agent.visits_states[state]
+        n_s = agent.visits_states[state]
+        A = len(agent.action_set(state))
         epsilon = min(
-            1, self.c * agent.num_actions / (self.d**2 * t)
-        )  # Epsilon decreases over time
+            1, self.c * A / (self.d**2 * n_s)
+        )  # Epsilon decrece en función de la cantidad de visitas al estado
         greedy_action = agent.argmax_q_table(state)
         explore_action = agent.random_action(state)
         num = np.random.random()  # Se genera un número aleatorio entre 0 y 1
-        # Se explora con probabilidad epsilon y se explota con probabilidad 1-epsilon
+        # Se explora con probabilidad ϵ y se explota con probabilidad 1-ϵ
         return explore_action if num <= epsilon else greedy_action
 
     def get_label(self):
@@ -106,11 +141,21 @@ class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
 
 
 class UCB1ActionSelector(ActionSelector):
-    def __init__(self, c=2):
-        """Parámetros
-        c: parámetro de exploración
+    def __init__(self, c: float = 2):
+        """ Selector de acción UCB1. 
+
+        La probabilidad de exploración es proporcional a la raíz cuadrada del logaritmo del tiempo y el número de visitas a un estado.
+        Se selecciona la acción que maximiza el intervalo de confianza superior de la recompensa esperada. El intervalo de confianza superior está dado por:
+
+        UCB1(s, a) = Q(s, a) + c * sqrt(log(t) / N(s, a))
+
+        Parameters
+        ------------
+        c: float
+            Parámetro de exploración, valor mayor a 0.
         """
         super().__init__(c=2, strategy="UCB1")
+        c < 0 and ValueError("El valor de c debe ser mayor a 0")
         self.c = c
         self.strategy = f"UCB1"
 
@@ -152,9 +197,25 @@ class UCB1ActionSelector(ActionSelector):
 class AsOptUCBActionSelector(ActionSelector):
     """Asymptotically Optimal UCB action selector"""
 
-    def __init__(self, c=2):
-        """Parámetros
-        c: parámetro de exploración
+    def __init__(self, c: float = 2):
+        """ Inicializar el selector de acción AsOpt-UCB. La probabilidad de exploración es proporcional a la raíz cuadrada del logaritmo del tiempo y el número de visitas a un estado.
+        Se selecciona la acción que maximiza el intervalo de confianza superior de la recompensa esperada. Este selector es asintóticamente óptimo en un entorno de Bandits, es decir, en el Multi Armed Bandit converge a la política óptima a medida que el número de visitas a un estado tiende a infinito.
+        
+        El intervalo de confianza superior está dado por:
+        
+        UCB(s, a) = Q(s, a) + c * sqrt(log(t) / N(s, a))
+        donde f(t) = 1 + t * log(t)²
+        donde t:= N(s) es el número de visitas al estado s y N(s, a) es el número de visitas a la acción a en el estado s.
+        
+
+        Parameters
+        ------------
+        c: float
+            Exploration parameter for the UCB formula. UCB(s, a) = Q(s, a) + c * sqrt(log(t) / N(s, a))
+        
+        Examples
+        --------
+        >>> selector = AsOptUCBActionSelector(c=2)x
         """
         super().__init__(c=2, strategy="AsOpt-UCB")
         self.c = c
@@ -180,7 +241,7 @@ class AsOptUCBActionSelector(ActionSelector):
             q_state = np.fromiter(
                 (agent.q_table[state][action] for action in actions), dtype=float)
             # Calcular el valor de los estimadores de q utilizando la estrategia UCB
-            t = max(visits_state, 1)
+            t = visits_state + 1
             f_t = 1 + t * np.log(t)**2
             ucb = q_state + np.sqrt(c * np.log(f_t) / visits_state_action)
             # Seleccionar acción
@@ -200,20 +261,23 @@ class AsOptUCBActionSelector(ActionSelector):
 class Exp3ActionSelector(ActionSelector):
     """Exp3 action selector"""
 
-    def __init__(self, eta):
-        """
-        Exp3 action selector tiene un parámetro eta que puede ser constante o dinámico. En el caso de ser constante se debe ingresar un valor de eta, en el caso de ser dinámico se debe ingresar una fórmula para calcular eta en función del tiempo y el número de episodios.
+    def __init__(self, eta: str = "log(n_s) / q_range"):
+        """Initialize the Exp3 action selector.
 
-        Ejemplos: (t: instante de tiempo, T: número de episodios)
-            - eta = 0.1 (o cualquier valor de eta constante de tipo float)
-            - eta = 't / T'
-            - eta = 'log(t)'
-            - eta = 'sqrt(t)'
-            - eta = 'sqrt(t) / T'
-            - eta = 'log(t) / T'
+        Parameters
+        ----------
+        eta : str, optional
+            Parámetro de exploración, puede ser constante o una expresión que dependa del tiempo.
 
-        Parámetros:
-            eta: parámetro de exploración
+        Examples
+        --------
+        >>> allowed_variables = ['t', 'T', 'A', 'n_s', 'q_range']
+        >>> eta_values = ['sqrt(t)', 'log(t+1)', '0.1', 'log( n_s ) * n_s**(1/2) / q_range', 'log( n_s ) / q_range', 'sqrt( n_s ) / q_range']
+        >>> eta = "log(n_s) / q_range"
+        >>> selector = Exp3ActionSelector(eta=0.1)
+        >>> action = selector.select_action(agent, state)
+        >>> selector = Exp3ActionSelector(eta="sqrt(t)")
+        >>> action = selector.select_action(agent, state)
         """
         super().__init__(eta=eta, strategy="exp3")
         self.eta = str(eta)
@@ -231,7 +295,27 @@ class Exp3ActionSelector(ActionSelector):
         """Return the probabilities of selecting each action in the state. Used for debugging purposes"""
         return dict(zip(agent.action_set(state), self.probabilities))
 
-    def select_action(self, agent, state):
+    def select_action(self, agent, state) -> Any:
+        """Select an action using the Exp3 algorithm.
+
+        Parameters
+        ----------
+        agent : QAgentSSP
+            Agente que selecciona la acción
+        state : int
+            Estado actual
+
+        Returns
+        -------
+        Any
+            Acción seleccionada
+
+        Raises
+        ------
+        ValueError
+            Si no se puede seleccionar una acción en el estado actual
+        """
+
         # Visitas al estado actual
         t = agent.actual_episode
         # Número total de episodios (Horizonte de tiempo)
@@ -245,7 +329,7 @@ class Exp3ActionSelector(ActionSelector):
         params = {'t': t, 'T': T,
                   'sqrt': sqrt, 'log': log,
                   'A': len(actions),
-                  'n_s': max(agent.visits_states[state], 1),
+                  'n_s': agent.visits_states[state] + 1,
                   'q_range': max(q_value_range, 0.001),
                   }
         eta = eval(self.eta, params)

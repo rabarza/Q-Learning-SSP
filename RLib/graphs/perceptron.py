@@ -1,31 +1,28 @@
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))  # noqa: E402
-from typing import List
 import plotly.graph_objects as go
 import networkx as nx
 import random
 from RLib.utils.dijkstra import dijkstra_shortest_path
-
-import numpy as np
-np.ar
+from typing import List
 
 
 def create_perceptron_graph(nodes_by_layer: List[int] = [1, 1],
-                            min_length=1,
-                            max_length=20,
-                            seed=20) -> nx.DiGraph:
+                            min_length: int = 1,
+                            max_length: int = 20,
+                            seed: int = 20) -> nx.DiGraph:
     """Crea un grafo dirigido que representa un perceptrón multicapa.
 
     Parameters
     ----------
-    nodes_by_layer : List[int], opcional
+    nodes_by_layer : List[int]
         Número de nodos en cada capa del perceptrón. El i-ésimo elemento de la lista indica el número de nodos en la i-ésima capa.
-    min_length : int, opcional
+    min_length : int
         Longitud mínima de los arcos que conectan los nodos.
-    max_length : int, opcional
+    max_length : int
         Longitud máxima de los arcos que conectan los nodos.
-    seed : int, opcional
+    seed : int
         Semilla para el generador de números aleatorios para garantizar reproducibilidad.
 
     Returns
@@ -88,22 +85,22 @@ def create_hard_perceptron_graph(nodes_by_layer: List[int] = [1, 1], min_length:
 
     Parameters
     ----------
-    nodes_by_layer : List[int], opcional
+    nodes_by_layer : List[int]
         Número de nodos en cada capa del perceptrón. El i-ésimo elemento de la lista indica el número de nodos en la i-ésima capa.
-    min_length : int, opcional
+    min_length : int
         Longitud mínima de los arcos que conectan los nodos.
-    max_length : int, opcional
+    max_length : int
         Longitud máxima de los arcos que conectan los nodos.
-    costs_distribution : str, opcional
+    costs_distribution : str
         Distribución de los costos de los arcos. Puede ser 'uniform' o 'normal'.
-    seed : int, opcional
+    seed : int
         Semilla para el generador de números aleatorios para garantizar reproducibilidad.
 
     Returns
     -------
     perceptron_graph : nx.DiGraph
         Grafo dirigido que representa el perceptrón multicapa.
-    
+
     Raises
     ------
     TypeError
@@ -147,7 +144,7 @@ def plot_network_graph(graph, use_annotations=True, label_pos=0.15):
         Indica si se deben mostrar las etiquetas de los arcos.
     label_pos : float, opcional
         Posición de las etiquetas en los arcos.
-    
+
     Returns
     -------
     None
