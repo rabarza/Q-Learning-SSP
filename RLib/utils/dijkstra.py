@@ -40,7 +40,8 @@ def dijkstra_shortest_path(graph, source, target, avg_speed=25, distribution="lo
     shortest_distances = {node: float("inf") for node in graph.nodes()}
     shortest_distances[source] = 0  # La distancia al nodo de origen es 0
     # Crear un diccionario para almacenar los padres de cada nodo en el camino más corto
-    parents = {node: None for node in graph.nodes()}
+    
+    parents = {node: None for node in set(graph.nodes() - {source})}
     # Lista de nodos no visitados
     unvisited_nodes = list(graph.nodes())
     while unvisited_nodes:
@@ -68,12 +69,13 @@ def dijkstra_shortest_path(graph, source, target, avg_speed=25, distribution="lo
                 parents[neighbor] = current_node
 
     shortest_path = get_shortest_path_from_parents(
-        parents, source, target) if target else None
+        parents, source, target) if target is not None else None
     return shortest_distances, parents, shortest_path
 
 
 def get_shortest_path_from_parents(parents, source, target):
     """Retorna el camino más corto desde el nodo de origen al nodo de destino.
+    
     Parameters
     ----------
     parents: dict
@@ -162,7 +164,7 @@ def get_optimal_policy_and_q_star(graph: nx.MultiDiGraph, dest_node: Any, distri
     return policy, Q_star
 
 
-def get_shortest_path_from_policy(policy, source, target):
+def get_shortest_path_from_policy(policy:List[Any], source: Any, target: Any) -> List[Any]:
     """Retorna el camino más corto desde el nodo de origen al nodo de destino a partir de la política óptima.
 
     Parameters
@@ -176,8 +178,16 @@ def get_shortest_path_from_policy(policy, source, target):
 
     Returns
     -------
-    path: list
+    path: List[Any]
         lista con el camino más corto desde el nodo de origen al nodo de destino. Tiene la forma [nodo, ..., nodo]
+    
+    Examples
+    --------
+    >>> policy = {0: 1, 1: 3, 2: 3, 3: 4, 4: 4}
+    >>> source = 0
+    >>> target = 4
+    >>> get_shortest_path_from_policy(policy, source, target)
+    [0, 1, 3, 4]
     """
 
     path = [source]
@@ -198,11 +208,17 @@ def get_path_as_stateactions_dict(path):
     ----------
     path : list
         Lista de nodos que conforman el camino. más corto entre el nodo de inicio y el nodo de destino.
+    
     Returns
     -------
     policy : dict
         Diccionario que contiene la política óptima para el camino más corto entre el nodo de inicio y el nodo de destino. Tiene la forma {nodo: acción, ..., nodo: acción} donde la acción es el siguiente nodo en el camino más corto.
 
+    Examples
+    --------
+    >>> path = [0, 1, 3, 4]
+    >>> get_path_as_stateactions_dict(path)
+    {0: 1, 1: 3, 3: 4, 4: 4}
     """
     states = path[:-1]
     actions = path[1:]
@@ -211,7 +227,8 @@ def get_path_as_stateactions_dict(path):
     return path_dict
 
 
-def get_qtable_for_semipolicy(graph, policy, dest):
+def get_qtable_for_semipolicy(graph: nx.DiGraph, policy: Dict[Any, Dict[Any, Any]], dest: Any) -> Dict[Any, Dict[Any, float]]:
+                        
     """
     Retorna la tabla Q óptima para la política óptima.
 
@@ -219,12 +236,28 @@ def get_qtable_for_semipolicy(graph, policy, dest):
     ----------
     policy : dict
         Diccionario que contiene la política óptima para el camino más corto entre el nodo de inicio y el nodo de destino.
-    distances : dict
-        Diccionario que contiene las distancias de cada nodo al nodo de destino.
+    
     Returns
     -------
     q_table : dict
         Diccionario que contiene la tabla Q óptima para la política óptima.
+    
+    Examples
+    --------
+    >>> graph = nx.MultiDiGraph()
+    >>> edges = [
+    ...     (0, 1, {'length': 10, 'speed_kph': 25}),
+    ...     (1, 2, {'length': 5, 'speed_kph': 35}),
+    ...     (1, 3, {'length': 12, 'speed_kph': 25}),
+    ...     (2, 3, {'length': 10, 'speed_kph': 30}),
+    ...     (3, 4, {'length': 7, 'speed_kph': 20}),
+    ...     (4, 4, {'length': 0, 'speed_kph': 30})
+    ... ]
+    >>> graph.add_edges_from(edges)
+    >>> dest = 4
+    >>> policy = {0: 1, 1: 3, 2: 3, 3: 4, 4: 4}
+    >>> get_qtable_for_semipolicy(graph, policy, dest)
+    {0: {1: -10}, 1: {3: -12, 2: -15}, 2: {3: -10}, 3: {4: 0}, 4: {4: 0}}
     """
     from RLib.environments.ssp import get_cumulative_edges_cost
 

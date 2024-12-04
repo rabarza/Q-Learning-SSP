@@ -4,6 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))  # noqa: E402
 import plotly.graph_objects as go
 import networkx as nx
 import random
+from itertools import product
 from RLib.utils.dijkstra import dijkstra_shortest_path
 from typing import List
 
@@ -34,49 +35,57 @@ def create_perceptron_graph(nodes_by_layer: List[int] = [1, 1],
     ------
     TypeError
         Si los parámetros layers y nodes_by_layer no son listas.
+    ValueError
+        Si el número de nodos por capa es menor o igual a cero.
+    
     """
-    if type(nodes_by_layer) != list:
-        raise TypeError(
-            "Los parámetros layers y nodes_by_layer deben ser listas.")
+    if not isinstance(nodes_by_layer, list) or not all(isinstance(n, int) for n in nodes_by_layer):
+        raise TypeError("nodes_by_layer debe ser una lista de enteros.")
+    if len(nodes_by_layer) < 2:
+        raise ValueError("Debe haber al menos dos capas.")
+    if not all(n > 0 for n in nodes_by_layer):
+        raise ValueError(
+            "El número de nodos por capa debe ser mayor que cero.")
+    if not min_length > 0 and max_length > 0:
+        raise ValueError("min_length y max_length deben ser positivos.")
 
     # Inicializar la semilla para los largos aleatorios
-    if seed is not None:
-        random.seed(seed)
-
-    # Definir las capas del perceptrón y el número de nodos en cada capa
-    layers = list(map(lambda x: f'Capa {x}', range(len(nodes_by_layer))))
-    layers[0] = 'Entrada'
-    layers[-1] = 'Salida'
+    random.seed(seed)
 
     # Crear un grafo dirigido para representar el perceptrón
-    perceptron_graph = nx.DiGraph()
-
-    # Agregar nodos al grafo con las posiciones en el plano
-    posiciones = {}
+    graph = nx.DiGraph()
+    # Diccionario para almacenar las posiciones de los nodos
+    positions = {}
+    # Diccionario para mapear los nodos a sus identificadores
     x_step = 1.5  # Separación horizontal entre layers
     y_step = 1  # Separación vertical entre nodos en la misma capa
+    node_counter = 1  # Contador de nodos
 
-    for i, capa in enumerate(layers):
-        for j in range(nodes_by_layer[i]):
-            posiciones[(capa, j)] = (
+    for i, num_nodes in enumerate(nodes_by_layer):
+        for j in range(num_nodes):
+            node_name = node_counter
+            positions[node_counter] = (
                 i * x_step, - (j * y_step) + (nodes_by_layer[i] - 1) / 2)
-            # Agregar nodos al grafo con las posiciones definidas.
             # Las posiciones se almacenan en la llave "pos" de cada nodo.
-            perceptron_graph.add_node((capa, j), pos=posiciones[(capa, j)])
+            graph.add_node(node_counter, pos=positions[node_counter])
+            node_counter += 1
 
     # Conectar los nodos de acuerdo a la estructura del perceptrón.
     # Los nodos de la capa i se conectan con los nodos de la capa i+1
-    for i in range(len(layers) - 1):
-        for j in range(nodes_by_layer[i]):
-            for k in range(nodes_by_layer[i + 1]):
-                random_length = random.randint(min_length, max_length)
-                perceptron_graph.add_edge(
-                    (layers[i], j),  # Nodo de origen (capa i, nodo j)
-                    (layers[i + 1], k),  # Nodo de destino
-                    length=random_length,  # Longitud del arco
-                )
+    for i in range(len(nodes_by_layer) - 1):
+        current_layer = range(
+            sum(nodes_by_layer[:i]) + 1, sum(nodes_by_layer[:i + 1]) + 1)
+        next_layer = range(
+            sum(nodes_by_layer[:i + 1]) + 1, sum(nodes_by_layer[:i + 2]) + 1)
 
-    return perceptron_graph
+        for src, tgt in product(current_layer, next_layer):
+            graph.add_edge(src, tgt, length=random.randint(
+                min_length, max_length))
+    # Renombrar el último nodo como 0
+    last_node = node_counter - 1
+    nx.relabel_nodes(graph, {last_node: 0}, copy=False)
+
+    return graph
 
 
 def create_hard_perceptron_graph(nodes_by_layer: List[int] = [1, 1], min_length: int = 1, max_length: int = 20, costs_distribution: str = None, seed: int = 20) -> nx.DiGraph:
@@ -124,8 +133,8 @@ def create_hard_perceptron_graph(nodes_by_layer: List[int] = [1, 1], min_length:
 
     graph = create_perceptron_graph(
         nodes_by_layer, min_length, max_length, seed)
-    origin_node = ('Entrada', 0)
-    target_node = ('Salida', 0)
+    origin_node = 1
+    target_node = 0
     _, _, shortest_path = dijkstra_shortest_path(
         graph, origin_node, target_node, distribution=costs_distribution)
     remove_edges_to_shortest_path(graph, shortest_path)
@@ -298,7 +307,7 @@ if __name__ == "__main__":
     # Crear un perceptrón con 3 capas y 2 nodos en cada capa
     perceptron_graph = create_perceptron_graph(nodes_by_layer=[1, 2, 10, 2, 1])
     plot_network_graph(perceptron_graph, use_annotations=True, label_pos=0.6)
-    hard_perceptron_graph = create_hard_perceptron_graph(
-        nodes_by_layer=[1, 2, 3, 2, 1], costs_distribution='uniform')
+    hard_perceptron_graph = create_hard_perceptron_graph(nodes_by_layer=[1, 3, 3, 3, 1],
+                                                         costs_distribution='uniform')
     plot_network_graph(hard_perceptron_graph,
                        use_annotations=True, label_pos=0.6)
