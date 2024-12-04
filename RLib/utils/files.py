@@ -189,9 +189,6 @@ def serialize_and_save_table(table, path, file_name) -> Optional[None]:
         ruta de la carpeta donde se guardará el archivo
     file_name: str
         nombre del archivo
-    Returns
-    -------
-    None
     """
 
     if not os.path.exists(path):

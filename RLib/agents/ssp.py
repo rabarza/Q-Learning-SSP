@@ -261,8 +261,8 @@ class QAgentSSP(QAgent):
         Parameters
         ----------
 
-        environment: SSPEnv (objeto de la clase SSPEnv)
-            entorno en el que se encuentra el agente.
+        environment: SSPEnv
+            entorno en el que se encuentra el agente (objeto de la clase SSPEnv).
 
         alpha: Union[str, float]
             fórmula para calcular el valor de alpha. Puede ser cualquier expresión matemática válida que contenga las variables `N(s,a)`, `N(s)`, `t`, `sqrt`, o `log`.
@@ -271,8 +271,8 @@ class QAgentSSP(QAgent):
         gamma: float
             factor de descuento. Debe ser un valor entre 0 y 1.
 
-        action_selector: ActionSelector (objeto de la clase ActionSelector)
-            selector de acciones.
+        action_selector: ActionSelector
+            selector de acciones (objeto de la clase ActionSelector).
         """
         super().__init__(alpha=alpha, gamma=gamma, action_selector=action_selector)
         self.env = environment
