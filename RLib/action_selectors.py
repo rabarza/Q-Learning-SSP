@@ -203,7 +203,7 @@ class AsOptUCBActionSelector(ActionSelector):
         
         El intervalo de confianza superior está dado por:
         
-        UCB(s, a) = Q(s, a) + c * sqrt(log(t) / N(s, a))
+        UCB(s, a) = Q(s, a) + c * sqrt(f(t) / N(s, a))
         donde f(t) = 1 + t * log(t)²
         donde t:= N(s) es el número de visitas al estado s y N(s, a) es el número de visitas a la acción a en el estado s.
         
@@ -215,7 +215,7 @@ class AsOptUCBActionSelector(ActionSelector):
         
         Examples
         --------
-        >>> selector = AsOptUCBActionSelector(c=2)x
+        >>> selector = AsOptUCBActionSelector(c=2)
         """
         super().__init__(c=2, strategy="AsOpt-UCB")
         self.c = c
