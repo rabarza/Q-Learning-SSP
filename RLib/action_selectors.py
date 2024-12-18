@@ -219,6 +219,7 @@ class AsOptUCBActionSelector(ActionSelector):
         """
         super().__init__(c=2, strategy="AsOpt-UCB")
         self.c = c
+        self.strategy = f"AsOpt-UCB"
 
     def select_action(self, agent, state):
         c = self.c
@@ -258,11 +259,11 @@ class AsOptUCBActionSelector(ActionSelector):
         return f"c = {self.c}"
 
 
-class Exp3ActionSelector(ActionSelector):
+class BoltzmannSelector(ActionSelector):
     """Exp3 action selector"""
 
     def __init__(self, eta: str = "log(n_s) / q_range"):
-        """Initialize the Exp3 action selector.
+        """Initialize the Boltzmann action selector.
 
         Parameters
         ----------
@@ -274,13 +275,14 @@ class Exp3ActionSelector(ActionSelector):
         >>> allowed_variables = ['t', 'T', 'A', 'n_s', 'q_range']
         >>> eta_values = ['sqrt(t)', 'log(t+1)', '0.1', 'log( n_s ) * n_s**(1/2) / q_range', 'log( n_s ) / q_range', 'sqrt( n_s ) / q_range']
         >>> eta = "log(n_s) / q_range"
-        >>> selector = Exp3ActionSelector(eta=0.1)
+        >>> selector = BoltzmannSelector(eta=0.1)
         >>> action = selector.select_action(agent, state)
-        >>> selector = Exp3ActionSelector(eta="sqrt(t)")
+        >>> selector = BoltzmannSelector(eta="sqrt(t)")
         >>> action = selector.select_action(agent, state)
         """
-        super().__init__(eta=eta, strategy="exp3")
+        super().__init__(eta=eta, strategy="Boltzmann")
         self.eta = str(eta)
+        self.strategy = "Boltzmann"
 
     def calculate_probabilities(self, q_values, eta):
         # Los valores de q se normalizan para evitar problemas de overflow (restando el máximo valor de q)
@@ -352,7 +354,7 @@ if __name__ == "__main__":
 
     print("Ejemplos de uso de los selectores de acción:")
 
-    selector1 = Exp3ActionSelector(beta="t / T")
+    selector1 = BoltzmannSelector(eta="t / T")
     selector2 = UCB1ActionSelector(c=2)
     selector3 = EpsilonGreedyActionSelector(epsilon=0.1)
 
