@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../..')))
 
 # ================= Comparación de modelos =================
-criteria_mapping = {
+CRITERIA_MAPPING = {
     "steps": ("steps", "steps_best"),
     "score": ("scores", "scores_best"),
     "reward": ("scores", "scores_best"),
@@ -26,8 +26,13 @@ criteria_mapping = {
     "max_norm_error_normalized": ("max_norm_error_normalized", None),
     "max_norm_error_shortest_path_normalized": ("max_norm_error_shortest_path_normalized", None),
     "normalized error": ("max_norm_error_normalized", None),
-    "normalized shortest path error": ("max_norm_error_shortest_path_normalized", None),
-}
+    "normalized shortest path error": ("max_norm_error_shortest_path_normalized", None), }
+
+COLOR_MAPPING = {"e-greedy": "#FF0000",
+                 "e-decay": "$0000FF",
+                 "UCB1": "#D95319",
+                 "AsOpt-UCB": "#FF00FF",
+                 "Boltzmann": "#00FF00", }
 
 # ======================= Get label =======================
 
@@ -61,116 +66,43 @@ def get_label(agent):
     return f"{agent.get_label()} | {label['alpha']} | {label['strategy']}"
 
 
-# ======================= Matplotlib =======================
-def plot_results_per_episode_comp(
-    lista,
-    criteria="avg score",
-    compare_best=False,
-    dpi=100,
-    episodes=None,
-    save=False,
-    name_file="Results.png",
-):
-    """
-    Realiza una comparación gráfica de la cantidad de pasos que tardó cada agente en un episodio en llegar a un estado terminal.
+def group_by_keyword(lista, keyword):
+    """	 Agrupa los elementos de una lista por el valor de un atributo. Es útil para agrupar agentes por estrategia, por ejemplo:
+    group_by_keyword(agentes, "strategy") agrupa los agentes por la estrategia que utilizan.
 
     Parameters
     ----------
-    lista: list
-        lista de objetos de la clase QLearningAgent
-    criteria: str
-        criterio de comparación entre los agentes. Puede ser 'steps', 'avg score' o 'avg q_values'
-    dpi: int
-        resolución de la imagen
+    lista : list
+        Lista de objetos a agrupar.
+    keyword : str
+        Atributo por el cual se agruparán los objetos.
+
+    Returns
+    -------
+    grupos : dict
+        Diccionario con los grupos de objetos
+
+    Examples
+    --------
+    >>> agentes = [agente1, agente2, agente3]
+    >>> grupos = group_by_keyword(agentes, "strategy")
+    >>> for estrategia, agentes in grupos:
+    >>>     print(f"Agentes con estrategia {estrategia}: {agentes}")
     """
-    plt.figure(dpi=dpi)
-    # Lista de colores que deseas asignar a los gráficos
-    colores = [
-        "blue",
-        "orange",
-        "green",
-        "red",
-        "purple",
-        "brown",
-        "pink",
-        "gray",
-        "olive",
-        "cyan",
-    ]
-    # Generador que cicla a través de la lista de colores infinitamente
-    color_generator = cycle(colores)
 
-    for model in lista:
-        color = next(color_generator)
-        episodes = model.num_episodes
-        if criteria == "steps":
-            values = model.steps
-            values_best = model.steps
-        elif criteria == "score":
-            values = model.scores
-            values_best = model.scores_best
-        elif criteria == "avg score":
-            values = model.avg_scores
-            values_best = model.avg_scores_best
-        elif criteria == "acum q_values":
-            values = model.acum_q_values
-            values_best = model.acum_q_values_best
-        elif criteria == "avg q_values":
-            values = model.avg_q_values
-            values_best = model.avg_q_values_best
-        elif criteria == "optimal paths":
-            values = model.optimal_paths
-            values_best = model.optimal_paths_best
-        else:
-            raise ValueError("Invalid comparison criteria")
-
-        label = get_label(model)
-        # the parameter to add color in the plot in matplotlib: color = model
-        plt.plot(range(episodes), values, label=label, color=color)
-        (
-            plt.plot(range(episodes), values_best, label=label, color=color)
-            if compare_best
-            else None
-        )
-    plt.xlabel("Episodes")
-    plt.ylabel(criteria)
-    plt.grid()
-    plt.savefig(name_file) if save else None
-    plt.show()
+    grouped_lists_dict = {}
+    sorted_list = sorted(lista, key=lambda x: getattr(x, keyword))
+    for agente in sorted_list:
+        # Obtener el valor de la keyword del agente
+        key = getattr(agente, keyword)  # equivalent to agente.keyword
+        if key not in grouped_lists_dict:
+            grouped_lists_dict[key] = []
+        grouped_lists_dict[key].append(agente)
+    return grouped_lists_dict.items()
 
 
-# ======================= Plotly =======================
-
-
-# Función para generar colores aleatorios
 def get_random_color():
     return "#" + "".join([random.choice("0123456789ABCDEF") for j in range(6)])
-
-
-def group_by_keyword(lista, keyword):
-    grupos = {}
-    for agente in lista:
-        # Obtener el valor de la keyword del agente
-        clave = getattr(agente, keyword)
-        if clave not in grupos:
-            grupos[clave] = []
-        grupos[clave].append(agente)
-    return grupos.items()
-
-
-def get_color_by_strategy(strategy: str):
-    colors = {"e-greedy": "#FF0000", "UCB1": "#0078d4", "exp3": "#00FF00"}
-
-    if strategy in ["softmax"]:
-        return colors["exp3"]
-    elif strategy in ["exp3"]:
-        return colors["exp3"]
-    elif strategy in ["e-greedy", "e-decay", "e-truncated"]:
-        return colors["e-greedy"]
-    elif strategy in ["UCB1"]:
-        return colors["UCB1"]
-    else:
-        return get_random_color()
 
 
 def ajustar_intensidad_color(color, intensity_factor):
@@ -213,18 +145,14 @@ def plot_results_per_episode_comp_plotly(
     # Obtener lista de valores únicos de alpha
     unique_alphas = sorted(set(agent.alpha for agent in agents_list))
 
-    if criteria not in criteria_mapping:
+    if criteria not in CRITERIA_MAPPING:
         raise ValueError(f"Invalid comparison criteria: {criteria}")
 
-    values_attr, _ = criteria_mapping[criteria]
+    values_attr, _ = CRITERIA_MAPPING[criteria]
     criteria_name = "Shortest Path Error" if criteria == "policy error" else criteria.capitalize()
 
     for estrategia, agentes in group_by_keyword(agents_list, "strategy"):
-        try:
-            color_base = get_color_by_strategy(estrategia)
-        except KeyError:
-            color_base = get_random_color()
-
+        color_base = COLOR_MAPPING.get(estrategia, get_random_color())
         for idx, agent in enumerate(agentes):
             # Ajustar la intensidad del color para cada línea dentro del grupo
             color_actual = ajustar_intensidad_color(
@@ -264,8 +192,7 @@ def plot_results_per_episode_comp_plotly(
                 )
             )
 
-    # Remueve los botones ya que utilizaremos la leyenda para filtrar
-        # Crear botones para filtrar por alpha
+    # Crear botones para filtrar por alpha
     buttons = []
     for alpha in unique_alphas:
         visible = [agent.alpha == alpha for agent in agents_list]
@@ -320,7 +247,6 @@ def plot_results_per_episode_comp_plotly(
         ),
 
     )
-
     return fig
 
 
@@ -349,34 +275,14 @@ def plot_results_per_episode_comp_matplotlib(
     fig = plt.figure(dpi=dpi)
     ax = plt.gca()  # Obtener el eje actual
 
-    criteria_mapping = {
-        "steps": ("steps", "steps_best"),
-        "score": ("scores", "scores_best"),
-        "reward": ("scores", "scores_best"),
-        "average reward": ("avg_scores", "avg_scores_best"),
-        "avg score": ("avg_scores", "avg_scores_best"),
-        "error": ("max_norm_error", None),
-        "shortest path error": ("max_norm_error_shortest_path", None),
-        "regret": ("regret", None),
-        "average regret": ("average_regret", None),
-        "optimal paths": ("optimal_paths", None),
-        "max_norm_error_normalized": ("max_norm_error_normalized", None),
-        "max_norm_error_shortest_path_normalized": ("max_norm_error_shortest_path_normalized", None),
-        "normalized error": ("max_norm_error_normalized", None),
-        "normalized shortest path error": ("max_norm_error_shortest_path_normalized", None),
-    }
-
-    if criteria not in criteria_mapping:
+    if criteria not in CRITERIA_MAPPING:
         raise ValueError("Invalid comparison criteria")
 
-    values_attr, values_best_attr = criteria_mapping[criteria]
+    values_attr, values_best_attr = CRITERIA_MAPPING[criteria]
     criteria_name = "Shortest Path Error" if criteria == "policy error" else criteria.capitalize()
 
     for estrategia, agentes in group_by_keyword(lista, "strategy"):
-        try:
-            color_base = get_color_by_strategy(estrategia)
-        except KeyError:
-            color_base = get_random_color()
+        color_base = COLOR_MAPPING.get(estrategia, get_random_color())
 
         for idx, agent in enumerate(agentes):
             # Ajustar la intensidad del color para cada línea dentro del grupo

@@ -178,6 +178,35 @@ def download_graph(
         print("Grafo descargado y guardado.")
     return G
 
+def save_graph_plot_as_pdf(graph, origin_node, target_node, filepath, graph_name="graph"):
+    """Guarda el grafo en un archivo pdf.
+
+    Parameters
+    ----------
+    graph: networkx.Graph
+        grafo a guardar
+    origin_node: Any
+        nodo de origen
+    target_node: Any
+        nodo objetivo
+    filepath: str
+        ruta del archivo para guardar el grafo
+        
+    """
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    # Obtener las posiciones de los nodos
+    pos = {node: (data['x'], data['y']) for node, data in graph.nodes(data=True)}
+
+    # Dibujar el grafo
+    fig, ax = ox.plot_graph(graph, node_size=10, node_color="red", edge_color="#999999", edge_linewidth=0.5, figsize=(10,10), show=False, close=False)
+
+    # destacar los nodos de origen y destino
+    nx.draw_networkx_nodes(graph, pos, nodelist=[origin_node], node_color='blue', node_size=15, ax=ax)
+    nx.draw_networkx_nodes(graph, pos, nodelist=[target_node], node_color='#00ff00', node_size=15, ax=ax)
+    os.makedirs(filepath, exist_ok=True)
+    plt.savefig(f"{filepath}/{graph_name}_graph.pdf", transparent=True, format="pdf", bbox_inches='tight')
+    
 
 def serialize_and_save_table(table, path, file_name) -> Optional[None]:
     """	Serializa la tabla y la guarda en un archivo JSON en la ruta especificada.
