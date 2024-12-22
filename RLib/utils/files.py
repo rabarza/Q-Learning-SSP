@@ -1,6 +1,7 @@
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))  # noqa: E402
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))  # noqa: E402
 from typing import Optional
 import pickle
 import osmnx as ox
@@ -48,12 +49,13 @@ def save_model_results(agent: QAgentSSP, results_path: str = None) -> None:
     agent_storage_path = os.path.join(results_path, agent_filename)
     q_table_storage_path = os.path.join(results_path, q_table_filename)
     q_table_sp_storage_path = os.path.join(results_path, q_table_sp_filename)
-    visits_storage_path = os.path.join(
-        results_path, visits_state_action_filename)
+    visits_storage_path = os.path.join(results_path, visits_state_action_filename)
     # Obtener la tabla Q para el mejor camino
     shortest_path = agent.shortest_path
     q_table = agent.q_table
-    q_table_sp = get_q_table_for_path(q_table, shortest_path)  # Q table for shortest path # noqa: E501
+    q_table_sp = get_q_table_for_path(
+        q_table, shortest_path
+    )  # Q table for shortest path # noqa: E501
     # Serializar la tabla Q para el mejor camino
     serialized_q_table = serialize_table(q_table)
     serialized_q_table_sp = serialize_table(q_table_sp)
@@ -75,35 +77,20 @@ def save_model_results(agent: QAgentSSP, results_path: str = None) -> None:
 
 
 def load_model_results(nombre_archivo, ruta_carpeta="results") -> Optional[QAgentSSP]:
-    """
-    Carga el objeto desde un archivo usando pickle.
-
-    Parameters
-    ----------
-    nombre_archivo: str
-        nombre del archivo a cargar
-
-    Returns
-    -------
-    object
-        objeto cargado desde el archivo
-
-    Raises
-    ------
-    EOFError
-        si el archivo está vacío o no contiene datos válidos
-    """
-    # Combinar el nombre del archivo con la ruta de la carpeta "results"
     ruta_archivo = os.path.join(ruta_carpeta, nombre_archivo)
 
     try:
-        # Cargar el objeto desde el archivo usando pickle
+        # Usar joblib para cargar archivos grandes
+        # return load(ruta_archivo)
         with open(ruta_archivo, "rb") as archivo:
             objeto_cargado = pickle.load(archivo)
         return objeto_cargado
-    except EOFError:
-        message = f"Error: El archivo {ruta_archivo} está vacío o no contiene datos válidos."
-        print(message)
+    except MemoryError:
+        print(f"MemoryError al cargar {ruta_archivo}.")
+        return None
+    except Exception as e:
+        print(f"Error al cargar {ruta_archivo}: {e}")
+        return None
 
 
 def find_files_by_keyword(keyword, ruta_carpeta):
@@ -125,7 +112,9 @@ def find_files_by_keyword(keyword, ruta_carpeta):
     archivos_encontrados = [
         archivo
         for archivo in os.listdir(ruta_carpeta)
-        if os.path.isfile(os.path.join(ruta_carpeta, archivo)) and keyword in archivo and archivo.endswith(".pickle")
+        if os.path.isfile(os.path.join(ruta_carpeta, archivo))
+        and keyword in archivo
+        and archivo.endswith(".pickle")
     ]
     return archivos_encontrados
 
@@ -147,14 +136,19 @@ def download_graph(
     ----------
     north: float
         latitud norte
+
     south: float
         latitud sur
+
     east: float
         longitud este
+
     west: float
         longitud oeste
+
     filepath: str
         ruta del archivo para guardar el grafo
+
     format: str
         formato del archivo (por defecto es "graphml")
     """
@@ -178,38 +172,67 @@ def download_graph(
         print("Grafo descargado y guardado.")
     return G
 
-def save_graph_plot_as_pdf(graph, origin_node, target_node, filepath, graph_name="graph"):
+
+def save_graph_plot_as_pdf(
+    graph, origin_node, target_node, filepath, graph_name="graph", node_size=10
+):
     """Guarda el grafo en un archivo pdf.
 
     Parameters
     ----------
-    graph: networkx.Graph
+    graph networkx.Graph
         grafo a guardar
+
     origin_node: Any
         nodo de origen
+
     target_node: Any
         nodo objetivo
+
     filepath: str
         ruta del archivo para guardar el grafo
-        
+
+    node_size: int
+        tamaño de los nodos (por defecto es 10)
+
     """
     import networkx as nx
     import matplotlib.pyplot as plt
+
     # Obtener las posiciones de los nodos
-    pos = {node: (data['x'], data['y']) for node, data in graph.nodes(data=True)}
+    pos = {node: (data["x"], data["y"]) for node, data in graph.nodes(data=True)}
 
     # Dibujar el grafo
-    fig, ax = ox.plot_graph(graph, node_size=10, node_color="red", edge_color="#999999", edge_linewidth=0.5, figsize=(10,10), show=False, close=False)
+    fig, ax = ox.plot_graph(
+        graph,
+        node_size=10,
+        node_color="red",
+        edge_color="#999999",
+        edge_linewidth=0.5,
+        figsize=(10, 10),
+        show=False,
+        close=False,
+    )
 
     # destacar los nodos de origen y destino
-    nx.draw_networkx_nodes(graph, pos, nodelist=[origin_node], node_color='blue', node_size=15, ax=ax)
-    nx.draw_networkx_nodes(graph, pos, nodelist=[target_node], node_color='#00ff00', node_size=15, ax=ax)
+    nx.draw_networkx_nodes(
+        graph, pos, nodelist=[origin_node], node_color="blue", node_size=15, ax=ax
+    )
+    nx.draw_networkx_nodes(
+        graph, pos, nodelist=[target_node], node_color="#00ff00", node_size=15, ax=ax
+    )
     os.makedirs(filepath, exist_ok=True)
-    plt.savefig(f"{filepath}/{graph_name}_graph.pdf", transparent=True, format="pdf", bbox_inches='tight')
-    
+    plt.savefig(
+        f"{filepath}/{graph_name}_graph.pdf",
+        transparent=True,
+        format="pdf",
+        bbox_inches="tight",
+    )
+
 
 def serialize_and_save_table(table, path, file_name) -> Optional[None]:
-    """	Serializa la tabla y la guarda en un archivo JSON en la ruta especificada.
+    """Serializa la tabla y la guarda en un archivo JSON en la ruta especificada.
+
     Parameters
     ----------
     table: dict
