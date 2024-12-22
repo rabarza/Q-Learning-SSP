@@ -27,7 +27,7 @@ class ActionSelector(object):
 
 class EpsilonGreedyActionSelector(ActionSelector):
     def __init__(self, epsilon=0.1):
-        """ Selector de acción ε-greedy. La probabilidad de exploración es ε y la probabilidad de explotación es 1-ε.
+        """Selector de acción ε-greedy. La probabilidad de exploración es ε y la probabilidad de explotación es 1-ε.
 
         Parameters
         ------------
@@ -61,20 +61,20 @@ class EpsilonGreedyActionSelector(ActionSelector):
 
 class EpsilonGreedyDecayActionSelector(ActionSelector):
     def __init__(self, constant=0.99):
-        r"""Clase para un selector de acción ε-greedy con exploración decreciente. 
-        La probabilidad de exploración disminuye a medida que se visitan los estados. 
+        r"""Clase para un selector de acción ε-greedy con exploración decreciente.
+        La probabilidad de exploración disminuye a medida que se visitan los estados.
         La probabilidad de exploración para un estado s está dada por:
-        ϵₜ(s) = c / Nₜ(s), donde Nₜ(s) es el número de visitas al estado s en el tiempo t. 
+        ϵₜ(s) = c / Nₜ(s), donde Nₜ(s) es el número de visitas al estado s en el tiempo t.
         La constante `c=constant` es un valor entre 0 y 1.
 
         Parameters
         ------------
         constant: float
-            Valor entre 0 y 1 de la constante de la tasa de decrecimiento de `ϵₜ`  
+            Valor entre 0 y 1 de la constante de la tasa de decrecimiento de `ϵₜ`
 
         Examples
         --------
-        >>> selector = EpsilonGreedyDecayActionSelector(constant=1)   
+        >>> selector = EpsilonGreedyDecayActionSelector(constant=1)
         """
         super().__init__(constant=constant, strategy="e-decay")
         self.constant = constant
@@ -94,8 +94,19 @@ class EpsilonGreedyDecayActionSelector(ActionSelector):
         epsilon = self.constant / (t + self.constant)
         actions = agent.action_set(state)
         greedy_action = agent.argmax_q_table(state)
-        probabilities = dict(zip(actions, [epsilon/len(actions) if action !=
-                             greedy_action else 1 - epsilon + epsilon/len(actions) for action in actions]))
+        probabilities = dict(
+            zip(
+                actions,
+                [
+                    (
+                        epsilon / len(actions)
+                        if action != greedy_action
+                        else 1 - epsilon + epsilon / len(actions)
+                    )
+                    for action in actions
+                ],
+            )
+        )
         return probabilities
 
     def get_label(self):
@@ -115,7 +126,7 @@ class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
 
         Parameters
         ------------
-            c : float  
+            c : float
                 parametro de exploración, entre 0 y 1
 
             d: parametro de exploración, entre 0 y 1
@@ -142,7 +153,7 @@ class BubeckDecayEpsilonGreedyActionSelector(ActionSelector):
 
 class UCB1ActionSelector(ActionSelector):
     def __init__(self, c: float = 2):
-        """ Selector de acción UCB1. 
+        """Selector de acción UCB1.
 
         La probabilidad de exploración es proporcional a la raíz cuadrada del logaritmo del tiempo y el número de visitas a un estado.
         Se selecciona la acción que maximiza el intervalo de confianza superior de la recompensa esperada. El intervalo de confianza superior está dado por:
@@ -166,7 +177,8 @@ class UCB1ActionSelector(ActionSelector):
         # Contador de visitas para cada accion en el estado actual
         visits_state = agent.visits_states[state]
         visits_state_action = np.fromiter(
-            (agent.visits_actions[state][action] for action in actions), dtype=float)
+            (agent.visits_actions[state][action] for action in actions), dtype=float
+        )
         # Contar la cantidad de acciones que no han sido escogidas en el estado actual
         not_chosen_actions_idx = np.where(visits_state_action == 0)[0]
         # Si alguna(s) de las acciones aún no ha sido escogida...
@@ -177,7 +189,8 @@ class UCB1ActionSelector(ActionSelector):
         else:
             # Obtener los valores de q para cada acción a partir del estado s
             q_state = np.fromiter(
-                (agent.q_table[state][action] for action in actions), dtype=float)
+                (agent.q_table[state][action] for action in actions), dtype=float
+            )
             # Calcular el valor de los estimadores de q utilizando la estrategia UCB
             t = max(visits_state, 1)
             ucb = q_state + c * np.sqrt(np.log(t) / visits_state_action)
@@ -198,21 +211,21 @@ class AsOptUCBActionSelector(ActionSelector):
     """Asymptotically Optimal UCB action selector"""
 
     def __init__(self, c: float = 2):
-        """ Inicializar el selector de acción AsOpt-UCB. La probabilidad de exploración es proporcional a la raíz cuadrada del logaritmo del tiempo y el número de visitas a un estado.
+        """Inicializar el selector de acción AsOpt-UCB. La probabilidad de exploración es proporcional a la raíz cuadrada del logaritmo del tiempo y el número de visitas a un estado.
         Se selecciona la acción que maximiza el intervalo de confianza superior de la recompensa esperada. Este selector es asintóticamente óptimo en un entorno de Bandits, es decir, en el Multi Armed Bandit converge a la política óptima a medida que el número de visitas a un estado tiende a infinito.
-        
+
         El intervalo de confianza superior está dado por:
-        
+
         UCB(s, a) = Q(s, a) + c * sqrt(f(t) / N(s, a))
         donde f(t) = 1 + t * log(t)²
         donde t:= N(s) es el número de visitas al estado s y N(s, a) es el número de visitas a la acción a en el estado s.
-        
+
 
         Parameters
         ------------
         c: float
             Exploration parameter for the UCB formula. UCB(s, a) = Q(s, a) + c * sqrt(log(t) / N(s, a))
-        
+
         Examples
         --------
         >>> selector = AsOptUCBActionSelector(c=2)
@@ -228,7 +241,8 @@ class AsOptUCBActionSelector(ActionSelector):
         # Contador de visitas para cada accion en el estado actual
         visits_state = agent.visits_states[state]
         visits_state_action = np.fromiter(
-            (agent.visits_actions[state][action] for action in actions), dtype=float)
+            (agent.visits_actions[state][action] for action in actions), dtype=float
+        )
         # Contar la cantidad de acciones que no han sido escogidas en el estado actual
         not_chosen_actions_idx = np.where(visits_state_action == 0)[0]
 
@@ -240,10 +254,11 @@ class AsOptUCBActionSelector(ActionSelector):
         else:
             # Obtener los valores de q para cada acción a partir del estado s
             q_state = np.fromiter(
-                (agent.q_table[state][action] for action in actions), dtype=float)
+                (agent.q_table[state][action] for action in actions), dtype=float
+            )
             # Calcular el valor de los estimadores de q utilizando la estrategia UCB
             t = visits_state + 1
-            f_t = 1 + t * np.log(t)**2
+            f_t = 1 + t * np.log(t) ** 2
             ucb = q_state + np.sqrt(c * np.log(f_t) / visits_state_action)
             # Seleccionar acción
             max_ucb = np.max(ucb)
@@ -268,7 +283,11 @@ class BoltzmannSelector(ActionSelector):
         Parameters
         ----------
         eta : str, optional
-            Parámetro de exploración, puede ser constante o una expresión que dependa del tiempo.
+            Parámetro de exploración, puede ser constante o una expresión que dependa del tiempo. Puede ser una cadena de texto que contenga una expresión matemática que dependa de las siguientes variables: 't': episodio actual, 'T': numero de episodios, 'A': cantidad de acciones, 'n_s': visitas al estado, 'q_range': q_max(s)-q_min(s). e.g.::
+
+            - "sqrt(t)" or "sqrt(n_s)"
+            - "log(t+1)" or "log(n_s)"
+
 
         Examples
         --------
@@ -325,15 +344,20 @@ class BoltzmannSelector(ActionSelector):
         # acciones disponibles en el estado actual
         actions = agent.action_set(state)
         q_values = np.fromiter(
-            (agent.q_table[state][action] for action in actions), dtype=float)
+            (agent.q_table[state][action] for action in actions), dtype=float
+        )
         q_value_range = np.ptp(q_values)  # peak-to-peak value (max - min)
         # Evaluar eta en función del tiempo y el número de episodios
-        params = {'t': t, 'T': T,
-                  'sqrt': sqrt, 'log': log,
-                  'A': len(actions),
-                  'n_s': agent.visits_states[state] + 1,
-                  'q_range': max(q_value_range, 0.001),
-                  }
+        params = {
+            "t": t,
+            "T": T,
+            "sqrt": sqrt,
+            "log": log,
+            "A": len(actions),
+            "n_s": agent.visits_states[state] + 1,
+            "N(s)": agent.visits_states[state] + 1,
+            "q_range": max(q_value_range, 0.001),
+        }
         eta = eval(self.eta, params)
         # Calcular probabilidades de selección cada acción
         probabilities = self.calculate_probabilities(q_values, eta)
