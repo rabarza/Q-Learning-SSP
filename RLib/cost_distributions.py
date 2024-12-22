@@ -114,7 +114,7 @@ def lognormal_random_time(arc_length, avg_speed=25):
 def uniform_expected_time(arc_length, avg_speed=25):
     validate_positive_parameters(arc_length, avg_speed)
 
-    low = max(avg_speed - 3, 0)
+    low = max(avg_speed - 3, 0.001)
     high = avg_speed + 3
 
     inverse_mean = (np.log(high) - np.log(low)) / (high-low)
@@ -125,7 +125,7 @@ def uniform_expected_time(arc_length, avg_speed=25):
 def uniform_random_time(arc_length, avg_speed=25):
     validate_positive_parameters(arc_length, avg_speed)
 
-    low = max(avg_speed - 3, 0)
+    low = max(avg_speed - 3, 0.001)
     high = avg_speed + 3
 
     random_speed = np.random.uniform(low, high)
