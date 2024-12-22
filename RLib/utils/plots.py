@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, TypeVar, Dict
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,8 +8,9 @@ import random
 from RLib.agents.ssp import QAgentSSP
 import sys
 import os
-sys.path.append(os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../..')))
+from sympy import sympify, factor
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 # ================= Comparación de modelos =================
 CRITERIA_MAPPING = {
@@ -24,15 +25,21 @@ CRITERIA_MAPPING = {
     "average regret": ("average_regret", None),
     "optimal paths": ("optimal_paths", None),
     "max_norm_error_normalized": ("max_norm_error_normalized", None),
-    "max_norm_error_shortest_path_normalized": ("max_norm_error_shortest_path_normalized", None),
+    "max_norm_error_shortest_path_normalized": (
+        "max_norm_error_shortest_path_normalized",
+        None,
+    ),
     "normalized error": ("max_norm_error_normalized", None),
-    "normalized shortest path error": ("max_norm_error_shortest_path_normalized", None), }
+    "normalized shortest path error": ("max_norm_error_shortest_path_normalized", None),
+}
 
-COLOR_MAPPING = {"e-greedy": "#FF0000",
-                 "e-decay": "$0000FF",
-                 "UCB1": "#D95319",
-                 "AsOpt-UCB": "#FF00FF",
-                 "Boltzmann": "#00FF00", }
+COLOR_MAPPING = {
+    "e-greedy": "#FF0000",
+    "e-decay": "$0000FF",
+    "UCB1": "#D95319",
+    "AsOpt-UCB": "#FF00FF",
+    "Boltzmann": "#00FF00",
+}
 
 # ======================= Get label =======================
 
@@ -60,45 +67,90 @@ def get_label(agent):
 
     # If the agent has action selector
     if hasattr(agent, "action_selector") and agent.action_selector is not None:
-        return (
-            f"{agent.action_selector.get_label()} | {label['alpha']} | {label['strategy']}"
-        )
+        return f"{agent.action_selector.get_label()} | {label['alpha']} | {label['strategy']}"
     return f"{agent.get_label()} | {label['alpha']} | {label['strategy']}"
 
 
-def group_by_keyword(lista, keyword):
-    """	 Agrupa los elementos de una lista por el valor de un atributo. Es útil para agrupar agentes por estrategia, por ejemplo:
-    group_by_keyword(agentes, "strategy") agrupa los agentes por la estrategia que utilizan.
+def preprocess_label(label: str) -> str:
+    """
+    Preprocesa una etiqueta dividiéndola por '|', limpiando espacios y reconcatenando las partes.
 
     Parameters
     ----------
-    lista : list
-        Lista de objetos a agrupar.
+    label : str
+        Etiqueta original del agente.
+
+    Returns
+    -------
+    str
+        Etiqueta preprocesada y normalizada.
+    """
+    label_parts = label.split("|")
+    # Limpiar espacios y concatenar las partes sin espacios
+    cleaned_parts = [part.strip() for part in label_parts]
+    # Concatenar las partes con un guion bajo
+    concatenated_label = "|".join(cleaned_parts).replace(" ", "")
+    return concatenated_label
+
+
+# Función para preprocesar alpha, eliminar espacios y normalizar la expresión
+def preprocess_alpha(alpha: str) -> str:
+    # Eliminar espacios en la fórmula
+    alpha = alpha.replace(" ", "")
+
+    # Reemplazar 'N(s,a)' por 'N_sa' y 'N(s)' por 'N_s'
+    alpha = alpha.replace("N(s,a)", "N_sa")
+    alpha = alpha.replace("N(s)", "N_s")
+
+    # Convertir la fórmula a una expresión simbólica con sympify
+    expr = sympify(alpha)
+
+    # Factorizar la expresión para normalizarla
+    factored_expr = factor(expr)
+
+    # Convertir la expresión factorizada de vuelta a string
+    return str(factored_expr)
+
+
+T = TypeVar(
+    "T"
+)  # Esto permite que la función sea genérica y acepte cualquier tipo de objeto
+
+
+def group_by_attribute(objects_list: List[T], keyword: str) -> Dict[str, List[T]]:
+    """Agrupa los elementos de una lista de objetos por el valor de un atributo. Es útil para agrupar agentes por estrategia.
+
+    - agrupa los agentes por la estrategia que utilizan e.g.::
+
+        group_by_attribute(agentes, "strategy")
+
+    Parameters
+    ----------
+    objects_list : List[object]
+        objects_list de objetos a agrupar.
+
     keyword : str
         Atributo por el cual se agruparán los objetos.
 
     Returns
     -------
     grupos : dict
-        Diccionario con los grupos de objetos
+        Diccionario con los grupos de objetos en listas. Las claves son los valores únicos del atributo y los valores son listas de objetos.
 
     Examples
     --------
     >>> agentes = [agente1, agente2, agente3]
-    >>> grupos = group_by_keyword(agentes, "strategy")
+    >>> grupos = group_by_attribute(agentes, "strategy")
     >>> for estrategia, agentes in grupos:
     >>>     print(f"Agentes con estrategia {estrategia}: {agentes}")
     """
 
     grouped_lists_dict = {}
-    sorted_list = sorted(lista, key=lambda x: getattr(x, keyword))
-    for agente in sorted_list:
-        # Obtener el valor de la keyword del agente
-        key = getattr(agente, keyword)  # equivalent to agente.keyword
-        if key not in grouped_lists_dict:
-            grouped_lists_dict[key] = []
-        grouped_lists_dict[key].append(agente)
-    return grouped_lists_dict.items()
+    sorted_list = sorted(objects_list, key=lambda x: getattr(x, keyword))
+    for obj in sorted_list:
+        key = str(getattr(obj, keyword))  # igual a obj.keyword
+        grouped_lists_dict.setdefault(key, []).append(obj)
+    return grouped_lists_dict
 
 
 def get_random_color():
@@ -126,14 +178,13 @@ def plot_results_per_episode_comp_plotly(
     de los resultados de cada agente.
 
     Parameters
+    ----------
     agents_list : list
-        agents_list de agentes QLearningAgent.
+        Lista de agentes QLearningAgent.
     criteria : str
         Criterio de comparación entre los agentes. Puede ser 'steps', 'score', 'avg score', 'error', 'policy error' o 'regret'.
     add_label : bool
         Indica si se añade una etiqueta a cada línea del gráfico.
-    compare_best : bool
-        Indica si se compara con los mejores resultados obtenidos por cada agente.
 
     Returns
     -------
@@ -145,88 +196,117 @@ def plot_results_per_episode_comp_plotly(
     # Obtener lista de valores únicos de alpha
     unique_alphas = sorted(set(agent.alpha for agent in agents_list))
 
+    # Usar un diccionario con las fórmulas agrupadas por su clave preprocesada
+    grouped_alphas = {preprocess_alpha(alpha): alpha for alpha in unique_alphas}
+
     if criteria not in CRITERIA_MAPPING:
         raise ValueError(f"Invalid comparison criteria: {criteria}")
 
     values_attr, _ = CRITERIA_MAPPING[criteria]
-    criteria_name = "Shortest Path Error" if criteria == "policy error" else criteria.capitalize()
+    criteria_name = criteria.capitalize()
 
-    for estrategia, agentes in group_by_keyword(agents_list, "strategy"):
+    # Para controlar qué etiquetas ya se han mostrado en la leyenda
+    shown_labels = set()
+
+    for estrategia, agentes in group_by_attribute(agents_list, "strategy").items():
         color_base = COLOR_MAPPING.get(estrategia, get_random_color())
         for idx, agent in enumerate(agentes):
             # Ajustar la intensidad del color para cada línea dentro del grupo
-            color_actual = ajustar_intensidad_color(
-                color_base, 1 - 0.0005 * idx)
+            color_actual = ajustar_intensidad_color(color_base, 1 - 0.0005 * idx)
             # Cargar los resultados del agente
             data = agent.results()
 
-            if values_attr not in data:
-                print(
-                    f"Attribute {values_attr} not found for agent {agent}. Skipping.")
+            if not data or values_attr not in data:
+                print(f"Attribute {values_attr} not found for agent {agent}. Skipping.")
                 continue
 
             values = data[values_attr]
             episodes = agent.num_episodes
-            label = get_label(agent) if add_label else None
 
             # Crear DataFrame para este agente
-            agent_df = pd.DataFrame({
-                "episode": list(range(episodes)),
-                criteria: values
-            })
+            agent_df = pd.DataFrame(
+                {"episode": list(range(episodes)), criteria: values}
+            )
 
-            # Submuestrear si es necesario
+            # Submuestrear para reducir la cantidad de puntos en el gráfico
             n = 25
             agent_df = agent_df.iloc[::n, :]
 
+            # Obtener la etiqueta del agente
+            original_label = get_label(agent) if add_label else f"Agent {agent.id}"
+            preprocessed_label = preprocess_label(original_label)
+            # Determinar si mostrar la leyenda para este trace
+            if preprocessed_label not in shown_labels:
+                show_legend = True
+                shown_labels.add(preprocessed_label)
+                legend_name = original_label  # Nombre en la leyenda
+            else:
+                show_legend = False
+                legend_name = None  # No mostrar en la leyenda
+                
+            # Obtener el alpha del agente y preprocesarlo
+            normalized_alpha = preprocess_alpha(agent.alpha)
+            
             # Agregar la curva del agente al gráfico
             fig.add_trace(
                 go.Scattergl(
                     x=agent_df["episode"],
                     y=agent_df[criteria],
                     mode="lines",
-                    name=label,
+                    name=legend_name,
+                    legendgroup=preprocessed_label,
+                    showlegend=show_legend,
                     line=dict(color=color_actual),
-                    hovertext=label,
+                    hovertext=original_label,
                     visible=True,
+                    # se agrega información adicional para poder filtrar por alpha
+                    customdata=[normalized_alpha]
+                    * len(agent_df),
                 )
             )
 
-    # Crear botones para filtrar por alpha
+    # Crear botones para filtrar por la fórmula de alpha (usando las claves normalizadas)
     buttons = []
-    for alpha in unique_alphas:
-        visible = [agent.alpha == alpha for agent in agents_list]
+    for normalized_alpha in grouped_alphas.keys():
+        # La visibilidad de las curvas corresponde al alpha preprocesado. 
+        # Si el alpha del agente coincide con el alpha normalizado, la curva es visible para ese botón.
+        visible = [trace["customdata"][0] == normalized_alpha for trace in fig.data]
         buttons.append(
             dict(
-                method='update',
-                label=f'α: {alpha}',
-                args=[{'visible': visible},
-                      {'title': f'{criteria} - α: {alpha}'}],
+                method="update",
+                label=f"α: {grouped_alphas[normalized_alpha]}",  # Usar la fórmula original como etiqueta
+                args=[
+                    {"visible": visible},
+                    {"title": f"{criteria} - α: {grouped_alphas[normalized_alpha]}"},
+                ],
             )
         )
 
-    # Agregar botón para mostrar todos
+    # El primer botón muestra todas las curvas (todas las alphas)
     buttons.insert(
         0,
         dict(
-            label='Mostrar todos',
-            method='update',
-            args=[{'visible': [True] * len(fig.data)},
-                  {'title': f'{criteria} - Todos los α'}],
-        )
+            label="Mostrar todos",
+            method="update",
+            args=[
+                {"visible": [True] * len(fig.data)},
+                {"title": f"{criteria} - Todos los α"},
+            ],
+        ),
     )
 
+    # Agrupar los botones en un menú desplegable en el layout
     fig.update_layout(
         updatemenus=[
             dict(
-                type="dropdown",  # Cambia a 'dropdown' para mostrar la lista de opciones
-                direction='down',
+                type="dropdown",  # 'dropdown' (lista de opciones)
+                direction="down",
                 buttons=buttons,
                 active=0,
                 x=0,
-                xanchor='left',
+                xanchor="left",
                 y=1,
-                yanchor='top',
+                yanchor="top",
             )
         ],
         xaxis_title="Episodios",
@@ -240,20 +320,24 @@ def plot_results_per_episode_comp_plotly(
             xanchor="left",
             y=1,
             yanchor="top",
+            font=dict(
+                size=10
+            ),  # Reduce el tamaño de la fuente para disminuir el espacio entre entradas
+            tracegroupgap=5,  # Reduce el espacio entre grupos de trazas
         ),
-        extendiciclecolors=True,
-        hoverlabel=dict(
-            font_size=16,
-        ),
-
+        hoverlabel=dict(font_size=16),
     )
+
     return fig
 
 
 def plot_results_per_episode_comp_matplotlib(
-    lista: List[QAgentSSP], criteria: str = "nomalized shortest path error", add_label: bool = True, dpi: int = 150
+    lista: List[QAgentSSP],
+    criteria: str = "nomalized shortest path error",
+    add_label: bool = True,
+    dpi: int = 150,
 ):
-    '''Genera un gráfico de comparación de resultados por episodio utilizando Matplotlib.
+    """Genera un gráfico de comparación de resultados por episodio utilizando Matplotlib.
 
     Parameters
     ----------
@@ -270,7 +354,7 @@ def plot_results_per_episode_comp_matplotlib(
     -------
     fig : matplotlib.figure.Figure
         Gráfico de comparación de resultados por episodio.
-    '''
+    """
 
     fig = plt.figure(dpi=dpi)
     ax = plt.gca()  # Obtener el eje actual
@@ -279,9 +363,11 @@ def plot_results_per_episode_comp_matplotlib(
         raise ValueError("Invalid comparison criteria")
 
     values_attr, values_best_attr = CRITERIA_MAPPING[criteria]
-    criteria_name = "Shortest Path Error" if criteria == "policy error" else criteria.capitalize()
+    criteria_name = (
+        "Shortest Path Error" if criteria == "policy error" else criteria.capitalize()
+    )
 
-    for estrategia, agentes in group_by_keyword(lista, "strategy"):
+    for estrategia, agentes in group_by_attribute(lista, "strategy"):
         color_base = COLOR_MAPPING.get(estrategia, get_random_color())
 
         for idx, agent in enumerate(agentes):
